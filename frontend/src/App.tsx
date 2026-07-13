@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSocket } from './SocketContext';
-import type { Card } from '@king-of-tokyo/shared';
+import { Player, DiceRoll, Card, GameState } from '@king-of-tokyo/shared';
 import './App.css';
+import { GameOverScreen } from './GameOverScreen';
 
 function App() {
   const { connected, gameState, playerId, createGame, joinGame, quitGame, addBot, startGame, rollDice, keepDice, resolveDice, yieldTokyo, buyCard, sweepCards, endTurn, sendChat } = useSocket();
@@ -82,6 +83,10 @@ function App() {
         </div>
       </div>
     );
+  }
+
+  if (gameState.status === 'GameOver') {
+    return <GameOverScreen gameState={gameState} onLobbyReturn={() => socket?.emit('RETURN_TO_LOBBY', gameState.id)} />;
   }
 
   // GAME BOARD VIEW
