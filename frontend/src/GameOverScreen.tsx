@@ -18,13 +18,13 @@ export function GameOverScreen({ gameState, onLobbyReturn, onClose }: Props) {
   if (gameState.history) {
     const turns = Array.from(new Set(gameState.history.map(h => h.turnNumber))).sort((a,b)=>a-b);
     for (const turn of turns) {
-      const turnData: any = { name: \`Turn \${turn}\` };
+      const turnData: any = { name: `Turn ${turn}` };
       for (const id of playerIds) {
         const h = gameState.history.find(x => x.turnNumber === turn && x.playerId === id);
         if (h) {
-          turnData[\`\${gameState.players[id].name} VP\`] = h.vp;
-          turnData[\`\${gameState.players[id].name} Health\`] = h.health;
-          turnData[\`\${gameState.players[id].name} Energy\`] = h.energy;
+          turnData[`${gameState.players[id].name} VP`] = h.vp;
+          turnData[`${gameState.players[id].name} Health`] = h.health;
+          turnData[`${gameState.players[id].name} Energy`] = h.energy;
         }
       }
       chartData.push(turnData);
@@ -93,7 +93,7 @@ export function GameOverScreen({ gameState, onLobbyReturn, onClose }: Props) {
                 <YAxis stroke="#ccc" domain={[0, 20]} />
                 <Legend />
                 {playerIds.map((id, index) => (
-                  <Line key={id} type="monotone" dataKey={\`\${gameState.players[id].name} VP\`} stroke={colors[index % colors.length]} strokeWidth={3} dot={false} />
+                  <Line key={id} type="monotone" dataKey={`${gameState.players[id].name} VP`} stroke={colors[index % colors.length]} strokeWidth={3} dot={false} />
                 ))}
               </LineChart>
             </ResponsiveContainer>
@@ -105,7 +105,7 @@ export function GameOverScreen({ gameState, onLobbyReturn, onClose }: Props) {
                 <XAxis dataKey="name" stroke="#ccc" tick={false} />
                 <YAxis stroke="#ccc" domain={[0, 12]} />
                 {playerIds.map((id, index) => (
-                  <Line key={id} type="monotone" dataKey={\`\${gameState.players[id].name} Health\`} stroke={colors[index % colors.length]} strokeWidth={3} dot={false} />
+                  <Line key={id} type="monotone" dataKey={`${gameState.players[id].name} Health`} stroke={colors[index % colors.length]} strokeWidth={3} dot={false} />
                 ))}
               </LineChart>
             </ResponsiveContainer>
@@ -117,7 +117,7 @@ export function GameOverScreen({ gameState, onLobbyReturn, onClose }: Props) {
                 <XAxis dataKey="name" stroke="#ccc" tick={false} />
                 <YAxis stroke="#ccc" />
                 {playerIds.map((id, index) => (
-                  <Line key={id} type="monotone" dataKey={\`\${gameState.players[id].name} Energy\`} stroke={colors[index % colors.length]} strokeWidth={3} dot={false} />
+                  <Line key={id} type="monotone" dataKey={`${gameState.players[id].name} Energy`} stroke={colors[index % colors.length]} strokeWidth={3} dot={false} />
                 ))}
               </LineChart>
             </ResponsiveContainer>
