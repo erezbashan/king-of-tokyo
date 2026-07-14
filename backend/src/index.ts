@@ -32,6 +32,8 @@ if (fs.existsSync(GAMES_FILE)) {
     
     // Rescue games that were stuck mid-animation during a server restart
     Object.values(games).forEach(game => {
+    game.isAnimating = false;
+    game.pendingYields = [];
       game.isAnimating = false;
       game.pendingYields = [];
     });
@@ -111,14 +113,15 @@ async function startTurn(gameId: string, playerId: string) {
   game.pendingYields = [];
   game.logs.push(`TURN_START:${p.name}`);
   
+  let animatedStart = false;
+  
   if (p.inTokyo) {
     p.victoryPoints = Math.min(20, p.victoryPoints + 2);
     if (p.gameStats) p.gameStats.startedTurnInTokyoCount += 1;
     game.logs.push(`👑 ${p.name} started their turn in Tokyo City! (+2 VP)`);
-    broadcastState(gameId);
+    game.highlightedStats.push({ playerId: p.id, stat: 'vp' });
+    animatedStart = true;
   }
-  
-  let animatedStart = false;
   game.highlightedStats = [];
   if (p.cards.some(c => c.effect?.rapidHealing)) {
     const healAmt = Math.min(p.maxHealth || game.settings?.maxHealth || 10, p.health + 1) - p.health;
