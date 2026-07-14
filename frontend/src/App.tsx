@@ -192,7 +192,8 @@ function App() {
         {gameState.status === "GameOver" && (
           <div style={{ display: "flex", gap: "8px" }}>
             <button onClick={() => setShowStats(true)} className="btn primary">View Stats</button>
-            <button onClick={() => returnToLobby(gameState.id)} className="btn danger">Return to Lobby</button>
+            <button onClick={() => returnToLobby(gameState.id)} className="btn primary">Rematch (Keep Players)</button>
+            <button onClick={() => window.location.href = '/'} className="btn danger">New Game</button>
           </div>
         )}
         <div style={{ display: "flex", gap: "8px", marginLeft: "16px" }}>
@@ -436,7 +437,8 @@ function App() {
                 <div className="player-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
                     <strong style={{ color: p.color || 'white' }}>{p.name}</strong> {p.isBot && '🤖'} 
-                    {p.poisonTokens > 0 && <span style={{ marginLeft: '6px', color: '#ff4444', fontWeight: 'bold', display: 'inline-block', animation: 'poison-pop 0.3s ease-out' }} key={p.poisonTokens}>{Array(p.poisonTokens).fill('☠️').join('')}</span>}
+                    {p.poisonTokens > 0 && <span style={{ marginLeft: '6px', color: '#ff4444', fontWeight: 'bold', display: 'inline-block', animation: 'poison-pop 0.3s ease-out' }} key={'p'+p.poisonTokens}>{Array(p.poisonTokens).fill('☠️').join('')}</span>}
+                    {(p.shrinkTokens || 0) > 0 && <span style={{ marginLeft: '6px', fontSize: '14px', display: 'inline-block' }} key={'s'+p.shrinkTokens}>{Array(p.shrinkTokens).fill('📉').join('')}</span>}
                   </div>
                   {p.id === gameState.currentTurnPlayerId && p.health > 0 && (
                     <div style={{ animation: gameState.status === 'GameOver' ? 'none' : 'flash-btn 1.5s infinite', animationDelay: `-${Date.now() % 1500}ms`, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--primary)', fontWeight: 'bold' }}>
@@ -562,7 +564,7 @@ function App() {
       {showStats && gameState.status === "GameOver" && (
         <GameOverScreen 
           gameState={gameState} 
-          onLobbyReturn={() => returnToLobby(gameState.id)} 
+           
           onClose={() => setShowStats(false)} 
         />
       )}

@@ -3,7 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } fro
 
 interface Props {
   gameState: GameState;
-  onLobbyReturn: () => void;
+
   onClose: () => void;
 }
 
@@ -26,7 +26,7 @@ const CustomDot = (props: any) => {
   return null;
 };
 
-export function GameOverScreen({ gameState, onLobbyReturn, onClose }: Props) {
+export function GameOverScreen({ gameState, onClose }: Props) {
   const winner = gameState.winner ? gameState.players[gameState.winner] : null;
 
   // Transform history data for recharts
@@ -97,8 +97,28 @@ export function GameOverScreen({ gameState, onLobbyReturn, onClose }: Props) {
           <h2>💀 Everyone was defeated. The game ends in a draw!</h2>
         )}
         
-        <div style={{ marginTop: '24px' }}>
-          <button className="btn primary" onClick={onLobbyReturn}>Return to Lobby</button>
+        
+
+                <h4 style={{ textAlign: 'left', margin: '24px 0 8px 0' }}>Who was in Tokyo?</h4>
+        <div style={{ display: 'flex', width: '100%', height: '40px', borderRadius: '4px', overflow: 'hidden', backgroundColor: 'rgba(0,0,0,0.3)', border: '1px solid #555' }}>
+          {chartData.map((d) => {
+            const historyForTurn = gameState.history?.filter(h => h.turnNumber === d.turnNumber) || [];
+            const tokyoPlayerHistory = historyForTurn.find(h => h.inTokyo);
+            const player = tokyoPlayerHistory ? gameState.players[tokyoPlayerHistory.playerId] : null;
+            const color = player ? (player.color || '#888') : 'transparent';
+            const name = player ? player.name : '';
+            return (
+              <div 
+                key={d.turnNumber} 
+                style={{ flex: 1, backgroundColor: color, borderRight: '1px solid rgba(255,255,255,0.1)', cursor: 'crosshair' }}
+                title={`Turn ${d.turnNumber}: ${name || 'Empty'}`}
+              />
+            );
+          })}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '4px', color: '#888' }}>
+          <span>Turn 0</span>
+          <span>Turn {chartData.length > 0 ? chartData[chartData.length - 1].turnNumber : 0}</span>
         </div>
 
         {/* Stats Table */}

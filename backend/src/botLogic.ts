@@ -27,7 +27,9 @@ export async function playBotTurn(gameId: string, games: Record<string, GameStat
   // Initial roll
   await delay(1500);
   const extraDice = bot.cards.reduce((sum, c) => sum + (c.effect?.extraDie || 0), 0);
-  game.currentDice = rollDice(6 + extraDice);
+  const shrink = bot.shrinkTokens || 0;
+  const base = game.settings?.startingDice || 6;
+  game.currentDice = rollDice(Math.max(1, base + extraDice - shrink));
   game.rollsLeft = 2;
   broadcastState(gameId);
 

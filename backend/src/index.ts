@@ -194,7 +194,8 @@ async function endTurnAutomatically(gameId: string, socketId: string) {
       playerId: p.id,
       vp: p.victoryPoints,
       health: Math.max(0, p.health),
-      energy: p.energy
+      energy: p.energy,
+      inTokyo: p.inTokyo
     });
   });
   
@@ -435,6 +436,11 @@ async function resolveDiceAutomatically(gameId: string, socketId: string) {
 
     if (hitSomeone || modifierLogs.length > 0 || targetNames.length > 0) {
       const targetsStr = targetNames.length > 0 ? targetNames.join(', ') : 'no one';
+      if (p.cards.some(c => c.effect?.alphaMonster)) {
+        p.victoryPoints = Math.min(game.settings?.winningVP || 20, p.victoryPoints + 1);
+        modifierLogs.push(`🐺 ${p.name} gained 1 ⭐ from Alpha Monster!`);
+        game.highlightedStats.push({ playerId: p.id, stat: 'vp' });
+      }
       if (hasNovaBreath) {
         game.logs.push(`🌊 ${p.name} dealt ${results.attack} 💥 damage to ALL other players (${targetsStr})! (Nova Breath)`);
       } else {
@@ -456,6 +462,10 @@ async function resolveDiceAutomatically(gameId: string, socketId: string) {
         game.pendingYields = [];
         if (yielded) {
           playerInTokyo.inTokyo = false;
+          if (playerInTokyo.cards.some((c: any) => c.effect?.jetpack)) {
+            playerInTokyo.energy += 2;
+            game.logs.push(`🚀 ${playerInTokyo.name} gained 2 ⚡ from Jetpack for yielding Tokyo!`);
+          }
           game.logs.push(`${playerInTokyo.name} yielded Tokyo!`);
           hitTokyoPlayer = false; // Tokyo is empty now
         } else {
@@ -465,6 +475,10 @@ async function resolveDiceAutomatically(gameId: string, socketId: string) {
         const yielded = Math.random() > 0.5;
         if (yielded) {
           playerInTokyo.inTokyo = false;
+          if (playerInTokyo.cards.some((c: any) => c.effect?.jetpack)) {
+            playerInTokyo.energy += 2;
+            game.logs.push(`🚀 ${playerInTokyo.name} gained 2 ⚡ from Jetpack for yielding Tokyo!`);
+          }
           game.logs.push(`${playerInTokyo.name} yielded Tokyo!`);
           hitTokyoPlayer = false;
           if (!(game as any).botsMuted) {
@@ -809,6 +823,29 @@ io.on('connection', (socket) => {
               }
             });
             game.logs.push(`🚨 All other players lost 5 VP from Evacuation Orders!`);
+          }
+          if (card.effect?.spikedTail) {
+            const dmg = 2;
+            Object.values(game.players).forEach(other => {
+              if (other.id !== player.id && other.health > 0) {
+                const armor = other.cards.reduce((sum, c) => sum + (c.effect?.armor || 0), 0);
+                const evadeIdx = other.cards.findIndex(c => c.effect?.evade);
+                if (evadeIdx !== -1) {
+                  other.cards.splice(evadeIdx, 1);
+                  game.logs.push(`💨 ${other.name} Evaded Spiked Tail!`);
+                  return;
+                }
+                const actualDmg = Math.max(0, dmg - armor);
+                if (actualDmg > 0) {
+                  other.health -= actualDmg;
+                  game.highlightedStats.push({ playerId: other.id, stat: 'health' });
+                  if (other.health <= 0) {
+                    game.logs.push(`💀 ${other.name} was killed by Spiked Tail!`);
+                    if (other.gameStats) other.gameStats.turnDied = game.history && game.history.length > 0 ? game.history[game.history.length - 1].turnNumber : 0;
+                  }
+                }
+              }
+            });
           }
           if (card.effect?.highAltitude) {
             const dmg = 3;
