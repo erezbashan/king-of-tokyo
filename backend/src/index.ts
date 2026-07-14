@@ -118,6 +118,11 @@ async function startTurn(gameId: string, playerId: string) {
     broadcastState(gameId);
   }
   
+  if (p.cards.some(c => c.effect?.solarPowered) && p.energy === 0) {
+    p.energy += 1;
+    game.logs.push(`☀️ ${p.name} gained 1 ⚡ from Solar Powered!`);
+  }
+  
   if (p.poisonTokens > 0) {
     const poisonDmg = Math.min(p.health, p.poisonTokens);
     p.health -= poisonDmg;
@@ -229,6 +234,10 @@ async function resolveDiceAutomatically(gameId: string, socketId: string) {
 
   // Phase 2: Energy
   if (results.energy > 0) {
+    if (p.cards.some(c => c.effect?.energyHoarder)) {
+      results.energy += 1;
+      game.logs.push(`${p.name} gained +1 extra ⚡ from Energy Hoarder!`);
+    }
     p.energy += results.energy;
     if (p.gameStats) p.gameStats.energyGained += results.energy;
     game.logs.push(`${p.name} gained ${results.energy} ⚡.`);
@@ -252,6 +261,10 @@ async function resolveDiceAutomatically(gameId: string, socketId: string) {
     
     let actualHeal = 0;
     if (healsRemaining > 0 && !p.inTokyo) {
+      if (p.cards.some(c => c.effect?.regeneration)) {
+        healsRemaining += 1;
+        game.logs.push(`${p.name} heals +1 extra ❤️ from Regeneration!`);
+      }
       actualHeal = Math.min((p.maxHealth || game.settings?.maxHealth || 10) - p.health, healsRemaining);
       if (actualHeal > 0) {
         p.health += actualHeal;
@@ -313,6 +326,12 @@ async function resolveDiceAutomatically(gameId: string, socketId: string) {
           extraFireDamage = 1;
         }
         
+        const evadeIdx = other.cards.findIndex(c => c.effect?.evade);
+        if (evadeIdx !== -1 && dmg > 0) {
+          other.cards.splice(evadeIdx, 1);
+          dmg = 0;
+          modifierLogs.push(`💨 ${other.name} Evaded the attack!`);
+        }
         let actualDmg = Math.max(0, dmg - armor);
         if (actualDmg > 0) {
           other.health -= actualDmg;
@@ -321,6 +340,26 @@ async function resolveDiceAutomatically(gameId: string, socketId: string) {
           }
           game.highlightedStats.push({ playerId: other.id, stat: 'health' });
           hitSomeone = true;
+          
+          if (p.cards.some(c => c.effect?.shrinkRay)) {
+            other.shrinkTokens = Math.min(1, (other.shrinkTokens || 0) + 1);
+            modifierLogs.push(`📉 ${other.name} was shrunk!`);
+          }
+          if (p.cards.some(c => c.effect?.parasitic)) {
+            const actualHeal = Math.min(p.maxHealth || game.settings?.maxHealth || 10, p.health + 1) - p.health;
+            if (actualHeal > 0) {
+              p.health += actualHeal;
+              modifierLogs.push(`🦑 ${p.name} healed 1 ❤️ from Parasitic Tentacles!`);
+              game.highlightedStats.push({ playerId: p.id, stat: 'health' });
+            }
+          }
+          if (p.cards.some(c => c.effect?.alphaMonster)) {
+            if (p.victoryPoints < (game.settings?.winningVP || 20)) {
+              p.victoryPoints += 1;
+              modifierLogs.push(`🐺 ${p.name} gained 1 ⭐ from Alpha Monster!`);
+              game.highlightedStats.push({ playerId: p.id, stat: 'vp' });
+            }
+          }
           
           if (extraFireDamage > 0) {
             modifierLogs.push(`🔥 ${other.name} took +1 extra damage from Fire Breathing!`);
@@ -452,11 +491,13 @@ io.on('connection', (socket) => {
       name: username || 'Player 1',
       isBot: false,
       health: games[gameId] && games[gameId].settings ? games[gameId].settings.startingHealth : 10,
+      maxHealth: games[gameId] && games[gameId].settings ? games[gameId].settings.maxHealth : 10,
       victoryPoints: 0,
       energy: 0,
       inTokyo: false,
       cards: [],
-      poisonTokens: 0
+      poisonTokens: 0,
+      shrinkTokens: 0
     };
     games[gameId].playerOrder.push(socket.id);
     
@@ -533,11 +574,13 @@ io.on('connection', (socket) => {
       name: username || `Player ${Object.keys(game.players).length + 1}`,
       isBot: false,
       health: games[gameId] && games[gameId].settings ? games[gameId].settings.startingHealth : 10,
+      maxHealth: games[gameId] && games[gameId].settings ? games[gameId].settings.maxHealth : 10,
       victoryPoints: 0,
       energy: 0,
       inTokyo: false,
       cards: [],
-      poisonTokens: 0
+      poisonTokens: 0,
+      shrinkTokens: 0
     };
     game.playerOrder.push(socket.id);
     
@@ -570,11 +613,13 @@ io.on('connection', (socket) => {
         name: randomName,
         isBot: true,
         health: games[gameId] && games[gameId].settings ? games[gameId].settings.startingHealth : 10,
+        maxHealth: games[gameId] && games[gameId].settings ? games[gameId].settings.maxHealth : 10,
         victoryPoints: 0,
         energy: 0,
         inTokyo: false,
         cards: [],
-        poisonTokens: 0
+        poisonTokens: 0,
+      shrinkTokens: 0
       };
       game.playerOrder.push(botId);
       broadcastState(gameId);
@@ -595,6 +640,7 @@ io.on('connection', (socket) => {
         p.inTokyo = false;
         p.cards = [];
         p.poisonTokens = 0;
+        p.shrinkTokens = 0;
       });
       game.currentTurnPlayerId = null;
       broadcastState(gameId);
@@ -614,6 +660,7 @@ io.on('connection', (socket) => {
       Object.values(game.players).forEach((p, index) => {
         p.color = PLAYER_COLORS[index % PLAYER_COLORS.length];
         p.health = game.settings?.startingHealth || 10;
+        p.maxHealth = game.settings?.maxHealth || 10;
         p.gameStats = {
           damageDealt: 0,
           playersKilled: 0,

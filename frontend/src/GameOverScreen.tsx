@@ -7,6 +7,25 @@ interface Props {
   onClose: () => void;
 }
 
+
+const CustomDot = (props: any) => {
+  const { cx, cy, payload, dataKey, playerId, gameState } = props;
+  const val = payload[dataKey];
+  if (val === undefined || val === null) return null;
+  const p = gameState.players[playerId];
+  
+  const isDeathPoint = p && p.health <= 0 && p.gameStats?.turnDied && payload.name === `Turn ${p.gameStats.turnDied + 1}`;
+  
+  if (isDeathPoint) {
+    return (
+      <text x={cx} y={cy} dy={5} dx={-8} fill="white" fontSize="16px" style={{ zIndex: 10 }}>
+        💀
+      </text>
+    );
+  }
+  return null;
+};
+
 export function GameOverScreen({ gameState, onLobbyReturn, onClose }: Props) {
   const winner = gameState.winner ? gameState.players[gameState.winner] : null;
 
@@ -50,7 +69,7 @@ export function GameOverScreen({ gameState, onLobbyReturn, onClose }: Props) {
       for (const id of playerIds) {
         const p = gameState.players[id];
         // Graph Truncation: don't plot points past the turn they died
-        if (p.health <= 0 && p.gameStats?.turnDied && turn > p.gameStats.turnDied) {
+        if (p.health <= 0 && p.gameStats?.turnDied && turn > p.gameStats.turnDied + 1) {
           continue;
         }
         const h = gameState.history.find(x => x.turnNumber === turn && x.playerId === id);
@@ -134,7 +153,7 @@ export function GameOverScreen({ gameState, onLobbyReturn, onClose }: Props) {
                 <YAxis stroke="#ccc" domain={[0, 20]} />
                 
                 {playerIds.map(id => (
-                  <Line key={id} type="monotone" dataKey={`${gameState.players[id].name} VP`} stroke={gameState.players[id]?.color || '#8884d8'} strokeWidth={3} dot={false} />
+                  <Line key={id} type="monotone" dataKey={`${gameState.players[id].name} VP`} stroke={gameState.players[id]?.color || '#8884d8'} strokeWidth={3} dot={<CustomDot playerId={id} gameState={gameState} />} />
                 ))}
               </LineChart>
             </ResponsiveContainer>
@@ -146,7 +165,7 @@ export function GameOverScreen({ gameState, onLobbyReturn, onClose }: Props) {
                 <XAxis dataKey="name" stroke="#ccc" tick={false} />
                 <YAxis stroke="#ccc" domain={[0, 12]} />
                 {playerIds.map(id => (
-                  <Line key={id} type="monotone" dataKey={`${gameState.players[id].name} Health`} stroke={gameState.players[id]?.color || '#8884d8'} strokeWidth={3} dot={false} />
+                  <Line key={id} type="monotone" dataKey={`${gameState.players[id].name} Health`} stroke={gameState.players[id]?.color || '#8884d8'} strokeWidth={3} dot={<CustomDot playerId={id} gameState={gameState} />} />
                 ))}
               </LineChart>
             </ResponsiveContainer>
@@ -158,7 +177,7 @@ export function GameOverScreen({ gameState, onLobbyReturn, onClose }: Props) {
                 <XAxis dataKey="name" stroke="#ccc" tick={false} />
                 <YAxis stroke="#ccc" />
                 {playerIds.map(id => (
-                  <Line key={id} type="monotone" dataKey={`${gameState.players[id].name} Energy`} stroke={gameState.players[id]?.color || '#8884d8'} strokeWidth={3} dot={false} />
+                  <Line key={id} type="monotone" dataKey={`${gameState.players[id].name} Energy`} stroke={gameState.players[id]?.color || '#8884d8'} strokeWidth={3} dot={<CustomDot playerId={id} gameState={gameState} />} />
                 ))}
               </LineChart>
             </ResponsiveContainer>

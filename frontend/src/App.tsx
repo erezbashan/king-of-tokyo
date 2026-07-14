@@ -95,13 +95,15 @@ function App() {
   
 
   useEffect(() => {
+    let timerId: any;
     if (gameState?.status === "GameOver") {
-      setTimeout(() => {
+      timerId = setTimeout(() => {
         setShowStats(true);
-      }, 3000);
+      }, 4000);
     } else {
       setShowStats(false);
     }
+    return () => clearTimeout(timerId);
   }, [gameState?.status]);
   const [showAllLogs, setShowAllLogs] = useState(false);
   const [chatText, setChatText] = useState('');
@@ -203,7 +205,7 @@ function App() {
       <div className="board-layout">
         <div className="left-column" style={{ gap: '8px' }}>
           {gameState.status === 'Lobby' && (
-            <div className="glass-panel" style={{ padding: '16px', color: 'white' }}>
+            <div className="glass-panel" style={{ padding: '16px', color: 'white', width: 'fit-content' }}>
               <h3 style={{ marginTop: 0 }}>Game Settings</h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'auto 60px', gap: '12px 16px', alignItems: 'center' }}>
                 <label style={{ display: 'contents' }}>

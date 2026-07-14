@@ -13,6 +13,7 @@ export interface Player {
   cards: Card[];
   hasYielded?: boolean; // temporary flag during resolution
   poisonTokens: number;
+  shrinkTokens: number;
   gameStats?: {
     damageDealt: number;
     playersKilled: number;
