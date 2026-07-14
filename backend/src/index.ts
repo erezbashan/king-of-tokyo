@@ -248,6 +248,15 @@ async function resolveDiceAutomatically(gameId: string, socketId: string) {
       if (p.gameStats) p.gameStats.vpFromOther = (p.gameStats.vpFromOther || 0) + 2;
       game.logs.push(`🍖 ${p.name} gained 2 extra VP from Omnivore!`);
     }
+    if (p.cards.some(c => c.effect?.gourmet)) {
+      const counts: Record<string, number> = { '1': 0, '2': 0, '3': 0, 'Heart': 0, 'Lightning': 0, 'Claw': 0 };
+      game.currentDice.forEach(r => counts[r.face]++);
+      if (counts['1'] >= 3) {
+        displayPts += 1;
+        if (p.gameStats) p.gameStats.vpFromOther = (p.gameStats.vpFromOther || 0) + 1;
+        game.logs.push(`🍽️ ${p.name} gained 1 extra VP from Gourmet!`);
+      }
+    }
     p.victoryPoints = Math.min(game.settings?.winningVP || 20, p.victoryPoints + displayPts);
     if (p.gameStats) p.gameStats.vpFromDice = (p.gameStats.vpFromDice || 0) + results.points;
     game.logs.push(`${p.name} gained ${results.points} VP.`);
@@ -269,6 +278,10 @@ async function resolveDiceAutomatically(gameId: string, socketId: string) {
     if (p.cards.some(c => c.effect?.energyHoarder)) {
       results.energy += 1;
       game.logs.push(`${p.name} gained +1 extra ⚡ from Energy Hoarder!`);
+    }
+    if (p.cards.some(c => c.effect?.friendOfChildren)) {
+      results.energy += 1;
+      game.logs.push(`${p.name} gained +1 extra ⚡ from Friend of Children!`);
     }
     p.energy += results.energy;
     if (p.gameStats) p.gameStats.energyGained += results.energy;
@@ -356,6 +369,9 @@ async function resolveDiceAutomatically(gameId: string, socketId: string) {
         if (hasFireBreathing && neighbors.includes(other.id)) {
           dmg += 1;
           extraFireDamage = 1;
+        }
+        if (p.cards.some(c => c.effect?.urbavore) && p.inTokyo) {
+          dmg += 1;
         }
         
         const evadeIdx = other.cards.findIndex(c => c.effect?.evade);
@@ -498,9 +514,13 @@ async function resolveDiceAutomatically(gameId: string, socketId: string) {
       const isTokyoEmpty = !Object.values(game.players).some(pl => pl.inTokyo && pl.health > 0);
       if (isTokyoEmpty) {
         p.inTokyo = true;
-        p.victoryPoints = Math.min(20, p.victoryPoints + 1);
-        if (p.gameStats) p.gameStats.vpFromEnteringTokyo = (p.gameStats.vpFromEnteringTokyo || 0) + 1;
-        game.logs.push(`👑 ${p.name} entered Tokyo City! (+1 VP)`);
+        let enterVp = 1;
+        if (p.cards.some(c => c.effect?.urbavore)) {
+          enterVp += 1;
+        }
+        p.victoryPoints = Math.min(20, p.victoryPoints + enterVp);
+        if (p.gameStats) p.gameStats.vpFromEnteringTokyo = (p.gameStats.vpFromEnteringTokyo || 0) + enterVp;
+        game.logs.push(`👑 ${p.name} entered Tokyo City! (+${enterVp} VP)`);
         game.highlightedStats.push({ playerId: p.id, stat: 'vp' });
       }
     }
@@ -829,28 +849,30 @@ io.on('connection', (socket) => {
             });
             game.logs.push(`🚨 All other players lost 5 VP from Evacuation Orders!`);
           }
-          if (card.effect?.spikedTail) {
-            const dmg = 2;
-            Object.values(game.players).forEach(other => {
-              if (other.id !== player.id && other.health > 0) {
-                const armor = other.cards.reduce((sum, c) => sum + (c.effect?.armor || 0), 0);
-                const evadeIdx = other.cards.findIndex(c => c.effect?.evade);
-                if (evadeIdx !== -1) {
-                  other.cards.splice(evadeIdx, 1);
-                  game.logs.push(`💨 ${other.name} Evaded Spiked Tail!`);
-                  return;
-                }
-                const actualDmg = Math.max(0, dmg - armor);
-                if (actualDmg > 0) {
-                  other.health -= actualDmg;
-                  game.highlightedStats.push({ playerId: other.id, stat: 'health' });
-                  if (other.health <= 0) {
-                    game.logs.push(`💀 ${other.name} was killed by Spiked Tail!`);
-                    if (other.gameStats) other.gameStats.turnDied = game.history && game.history.length > 0 ? game.history[game.history.length - 1].turnNumber : 0;
+          if (card.effect?.spikeDamage) {
+            const dmg = card.effect.spikeDamage;
+            if (dmg > 0) {
+              Object.values(game.players).forEach(other => {
+                if (other.id !== player.id && other.health > 0) {
+                  const armor = other.cards.reduce((sum, c) => sum + (c.effect?.armor || 0), 0);
+                  const evadeIdx = other.cards.findIndex(c => c.effect?.evade);
+                  if (evadeIdx !== -1) {
+                    other.cards.splice(evadeIdx, 1);
+                    game.logs.push(`💨 ${other.name} Evaded the spike damage!`);
+                    return;
+                  }
+                  const actualDmg = Math.max(0, dmg - armor);
+                  if (actualDmg > 0) {
+                    other.health -= actualDmg;
+                    game.highlightedStats.push({ playerId: other.id, stat: 'health' });
+                    if (other.health <= 0) {
+                      game.logs.push(`💀 ${other.name} was killed by ${card.name}!`);
+                      if (other.gameStats) other.gameStats.turnDied = game.history && game.history.length > 0 ? game.history[game.history.length - 1].turnNumber : 0;
+                    }
                   }
                 }
-              }
-            });
+              });
+            }
           }
           if (card.effect?.highAltitude) {
             const dmg = 3;
