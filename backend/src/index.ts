@@ -52,7 +52,7 @@ function broadcastState(gameId: string) {
     // If not already game over, check if it should be
     if (state.status === 'Playing') {
       const alivePlayers = Object.values(state.players).filter(p => p.health > 0);
-      let winner = Object.values(state.players).find(p => p.victoryPoints >= 20);
+      let winner = Object.values(state.players).find(p => p.victoryPoints >= (state.settings?.winningVP || 20));
       if (!winner && alivePlayers.length <= 1) {
         winner = alivePlayers[0];
       }
@@ -106,6 +106,7 @@ async function startTurn(gameId: string, playerId: string) {
 
   game.currentTurnPlayerId = playerId;
   game.rollsLeft = 3;
+  console.log(`[DEBUG] ${gameId}: startTurn for ${playerId}. rollsLeft is now 3.`);
   game.currentDice = [];
   game.pendingYields = [];
   game.logs.push(`TURN_START:${p.name}`);
@@ -251,7 +252,7 @@ async function resolveDiceAutomatically(gameId: string, socketId: string) {
     
     let actualHeal = 0;
     if (healsRemaining > 0 && !p.inTokyo) {
-      actualHeal = Math.min((p.maxHealth || 10) - p.health, healsRemaining);
+      actualHeal = Math.min((p.maxHealth || game.settings?.maxHealth || 10) - p.health, healsRemaining);
       if (actualHeal > 0) {
         p.health += actualHeal;
         if (p.gameStats) p.gameStats.healingGained += actualHeal;
@@ -450,7 +451,7 @@ io.on('connection', (socket) => {
       id: socket.id,
       name: username || 'Player 1',
       isBot: false,
-      health: 10,
+      health: games[gameId] && games[gameId].settings ? games[gameId].settings.startingHealth : 10,
       victoryPoints: 0,
       energy: 0,
       inTokyo: false,
@@ -531,7 +532,7 @@ io.on('connection', (socket) => {
       id: socket.id,
       name: username || `Player ${Object.keys(game.players).length + 1}`,
       isBot: false,
-      health: 10,
+      health: games[gameId] && games[gameId].settings ? games[gameId].settings.startingHealth : 10,
       victoryPoints: 0,
       energy: 0,
       inTokyo: false,
@@ -568,7 +569,7 @@ io.on('connection', (socket) => {
         id: botId,
         name: randomName,
         isBot: true,
-        health: 10,
+        health: games[gameId] && games[gameId].settings ? games[gameId].settings.startingHealth : 10,
         victoryPoints: 0,
         energy: 0,
         inTokyo: false,
@@ -588,7 +589,7 @@ io.on('connection', (socket) => {
       game.history = [];
       game.logs = ['Game returned to lobby'];
       Object.values(game.players).forEach(p => {
-        p.health = 10;
+        p.health = game.settings?.startingHealth || 10;
         p.victoryPoints = 0;
         p.energy = 0;
         p.inTokyo = false;
@@ -600,8 +601,13 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on(SOCKET_EVENTS.START_GAME, (gameId: string) => {
+  socket.on(SOCKET_EVENTS.START_GAME, (payload: any) => {
+    const gameId = typeof payload === 'string' ? payload : payload.gameId;
+    const settings = typeof payload === 'string' ? undefined : payload.settings;
     const game = games[gameId];
+    if (game && settings) {
+      game.settings = { ...game.settings, ...settings };
+    }
     if (game && game.status === 'Lobby') {
       game.status = 'Playing';
       const PLAYER_COLORS = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
@@ -705,7 +711,7 @@ io.on('connection', (socket) => {
             game.highlightedStats.push({ playerId: player.id, stat: 'health' });
           }
           if (card.effect?.heal) {
-            const actualHeal = Math.min(player.maxHealth || 10, player.health + card.effect.heal) - player.health;
+            const actualHeal = Math.min(player.maxHealth || game.settings?.maxHealth || 10, player.health + card.effect.heal) - player.health;
             player.health += actualHeal;
             if (actualHeal > 0) {
               game.logs.push(`${player.name} healed ${actualHeal} ❤️.`);

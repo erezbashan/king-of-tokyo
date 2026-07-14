@@ -76,6 +76,11 @@ export interface GameState {
   logs: string[];
   chatMessages?: { sender: string, text: string }[];
   history?: TurnHistory[];
+  settings: {
+    maxHealth: number;
+    startingHealth: number;
+    winningVP: number;
+  };
 }
 
 export const MAX_HEALTH = 10;

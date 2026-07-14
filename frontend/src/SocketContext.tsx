@@ -12,7 +12,7 @@ interface SocketContextType {
   quitGame: (gameId: string) => void;
   returnToLobby: (gameId: string) => void;
   addBot: (gameId: string) => void;
-  startGame: (gameId: string) => void;
+  startGame: (gameId: string, settings?: any) => void;
   rollDice: (gameId: string) => void;
   keepDice: (gameId: string, diceIds: string[]) => void;
   resolveDice: (gameId: string) => void;
@@ -76,7 +76,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     },
     returnToLobby: (gameId) => emit('RETURN_TO_LOBBY', gameId),
     addBot: (gameId) => emit(SOCKET_EVENTS.ADD_BOT, gameId),
-    startGame: (gameId) => emit(SOCKET_EVENTS.START_GAME, gameId),
+    startGame: (gameId, settings) => emit(SOCKET_EVENTS.START_GAME, { gameId, settings }),
     rollDice: (gameId) => emit(SOCKET_EVENTS.ROLL_DICE, gameId),
     keepDice: (gameId, diceIds) => emit(SOCKET_EVENTS.KEEP_DICE, gameId, diceIds),
     resolveDice: (gameId) => emit(SOCKET_EVENTS.RESOLVE_DICE, gameId),

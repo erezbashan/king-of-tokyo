@@ -14,7 +14,8 @@ export const INITIAL_DECK: Card[] = [
   { id: 'c10', name: 'Armor', cost: 5, type: 'Keep', description: 'Ignore 1 damage when attacked.', effect: { armor: 1 } },
 ];
 
-export function createInitialGameState(id: string): GameState {
+export function createInitialGameState(id: string, settings?: any): GameState {
+  const gameSettings = settings || { maxHealth: 10, startingHealth: 10, winningVP: 20 };
   const deck = shuffleDeck();
   const marketCards = deck.splice(0, 3);
   return {
@@ -34,6 +35,7 @@ export function createInitialGameState(id: string): GameState {
     highlightedStats: [],
     pendingYields: [],
     logs: ['Game created'],
+    settings: gameSettings
   };
 }
 
