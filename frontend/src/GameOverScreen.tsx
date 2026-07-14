@@ -1,5 +1,5 @@
 import type { GameState } from '@king-of-tokyo/shared';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 
 interface Props {
   gameState: GameState;
@@ -12,7 +12,30 @@ export function GameOverScreen({ gameState, onLobbyReturn, onClose }: Props) {
 
   // Transform history data for recharts
   const chartData: any[] = [];
-  const playerIds = Object.keys(gameState.players);
+  const playerIds = Object.keys(gameState.players).sort((a, b) => {
+    const pA = gameState.players[a];
+    const pB = gameState.players[b];
+    
+    // 1. Winner on top
+    if (gameState.winner === a) return -1;
+    if (gameState.winner === b) return 1;
+    
+    // 2. Alive players above dead players
+    const aAlive = pA.health > 0;
+    const bAlive = pB.health > 0;
+    if (aAlive && !bAlive) return -1;
+    if (!aAlive && bAlive) return 1;
+    
+    // 3. If both alive, sort by VP descending
+    if (aAlive && bAlive) {
+      return pB.victoryPoints - pA.victoryPoints;
+    }
+    
+    // 4. If both dead, sort by turnDied descending (latest death first)
+    const turnA = pA.gameStats?.turnDied || 0;
+    const turnB = pB.gameStats?.turnDied || 0;
+    return turnB - turnA;
+  });
   
   if (gameState.history) {
     const turns = Array.from(new Set(gameState.history.map(h => h.turnNumber))).sort((a,b)=>a-b);
@@ -59,6 +82,10 @@ export function GameOverScreen({ gameState, onLobbyReturn, onClose }: Props) {
                 <th style={{ padding: '8px' }}>Total Damage Dealt</th>
                 <th style={{ padding: '8px' }}>Cards Bought</th>
                 <th style={{ padding: '8px' }}>Energy Spent</th>
+                <th style={{ padding: '8px' }}>Energy Gained</th>
+                <th style={{ padding: '8px' }}>Total Healing</th>
+                <th style={{ padding: '8px' }}>Times Entered Tokyo</th>
+                <th style={{ padding: '8px' }}>Times Started in Tokyo</th>
               </tr>
             </thead>
             <tbody>
@@ -71,6 +98,10 @@ export function GameOverScreen({ gameState, onLobbyReturn, onClose }: Props) {
                     <td style={{ padding: '8px' }}>{p.gameStats?.damageDealt || 0}</td>
                     <td style={{ padding: '8px' }}>{p.gameStats?.cardsBought || 0}</td>
                     <td style={{ padding: '8px' }}>{p.gameStats?.energySpent || 0}</td>
+                    <td style={{ padding: '8px' }}>{p.gameStats?.energyGained || 0}</td>
+                    <td style={{ padding: '8px' }}>{p.gameStats?.healingGained || 0}</td>
+                    <td style={{ padding: '8px' }}>{p.gameStats?.enteredTokyoCount || 0}</td>
+                    <td style={{ padding: '8px' }}>{p.gameStats?.startedTurnInTokyoCount || 0}</td>
                   </tr>
                 );
               })}
@@ -88,7 +119,7 @@ export function GameOverScreen({ gameState, onLobbyReturn, onClose }: Props) {
                 <CartesianGrid strokeDasharray="3 3" stroke="#444" />
                 <XAxis dataKey="name" stroke="#ccc" tick={false} />
                 <YAxis stroke="#ccc" domain={[0, 20]} />
-                <Legend />
+                
                 {playerIds.map(id => (
                   <Line key={id} type="monotone" dataKey={`${gameState.players[id].name} VP`} stroke={gameState.players[id]?.color || '#8884d8'} strokeWidth={3} dot={false} />
                 ))}

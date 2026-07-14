@@ -122,6 +122,7 @@ async function startTurn(gameId: string, playerId: string) {
     game.logs.push(`☠️ ${p.name} took ${poisonDmg} poison damage!`);
     if (p.health <= 0) {
       game.logs.push(`💀 ${p.name} was killed!`);
+      if (p.gameStats) p.gameStats.turnDied = game.turnCount;
     }
     game.isAnimating = true;
     game.highlightedStats = [{ playerId: p.id, stat: 'health' }];
@@ -227,6 +228,7 @@ async function resolveDiceAutomatically(gameId: string, socketId: string) {
   // Phase 2: Energy
   if (results.energy > 0) {
     p.energy += results.energy;
+    if (p.gameStats) p.gameStats.energyGained += results.energy;
     game.logs.push(`${p.name} gained ${results.energy} ⚡.`);
     game.highlightedDice = game.currentDice.filter(d => d.face === 'Lightning').map(d => d.id);
     game.highlightedStats = [{ playerId: p.id, stat: 'energy' }];
@@ -588,7 +590,11 @@ io.on('connection', (socket) => {
         p.gameStats = {
           damageDealt: 0,
           cardsBought: 0,
-          energySpent: 0
+          energySpent: 0,
+          enteredTokyoCount: 0,
+          startedTurnInTokyoCount: 0,
+          energyGained: 0,
+          healingGained: 0,
         };
       });
 

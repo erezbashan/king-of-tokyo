@@ -17,6 +17,11 @@ export interface Player {
     damageDealt: number;
     cardsBought: number;
     energySpent: number;
+    enteredTokyoCount: number;
+    startedTurnInTokyoCount: number;
+    energyGained: number;
+    healingGained: number;
+    turnDied?: number;
   };
 }
 
