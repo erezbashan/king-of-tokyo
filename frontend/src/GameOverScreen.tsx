@@ -145,10 +145,11 @@ export function GameOverScreen({ gameState, onClose }: Props) {
           <div style={{ marginTop: '24px', background: 'rgba(0,0,0,0.5)', padding: '16px', borderRadius: '8px' }}>
             <h3 style={{ marginBottom: '16px' }}>Game Progress</h3>
             <h4 style={{ textAlign: 'left', margin: '24px 0 8px 0' }}>Who was in Tokyo?</h4>
-            <div style={{ display: 'flex', width: '100%', height: '40px', borderRadius: '4px', overflow: 'hidden', backgroundColor: 'rgba(0,0,0,0.3)', border: '1px solid #555' }}>
+            <div style={{ display: 'flex', width: '100%', height: '40px', borderRadius: '4px', overflow: 'hidden', backgroundColor: 'rgba(0,0,0,0.3)', border: '1px solid #555', marginBottom: '24px' }}>
               {chartData.map((d) => {
                 const historyForTurn = gameState.history?.filter(h => h.turnNumber === d.turnNumber) || [];
-                const tokyoPlayerId = historyForTurn.length > 0 ? historyForTurn[0].tokyoPlayerId : null;
+                const tokyoPlayerHistory = historyForTurn.find(h => (h as any).inTokyo);
+                const tokyoPlayerId = historyForTurn.length > 0 && historyForTurn[0].tokyoPlayerId ? historyForTurn[0].tokyoPlayerId : (tokyoPlayerHistory ? tokyoPlayerHistory.playerId : null);
                 const player = tokyoPlayerId ? gameState.players[tokyoPlayerId] : null;
                 const color = player ? (player.color || '#888') : 'transparent';
                 const name = player ? player.name : '';

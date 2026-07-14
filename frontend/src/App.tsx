@@ -99,7 +99,7 @@ function App() {
     if (gameState?.status === "GameOver") {
       timerId = setTimeout(() => {
         setShowStats(true);
-      }, 4000);
+      }, 5000);
     } else {
       setShowStats(false);
     }
@@ -436,9 +436,10 @@ function App() {
               <div key={p.id} className={`player-card glass-panel ${p.id === gameState.currentTurnPlayerId ? 'active-turn' : ''} ${isMePlayer ? 'is-me' : ''} ${p.inTokyo ? 'in-tokyo' : ''} ${p.id === gameState.winner ? 'winner-card' : ''}`} style={{ marginBottom: '8px', opacity: p.health <= 0 ? 0.5 : 1, filter: p.health <= 0 ? 'grayscale(100%)' : 'none' }}>
                 <div className="player-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
-                    <strong style={{ color: p.color || 'white' }}>{p.name}</strong> {p.isBot && '🤖'} 
-                    {p.poisonTokens > 0 && <span style={{ marginLeft: '6px', color: '#ff4444', fontWeight: 'bold', display: 'inline-block', animation: 'poison-pop 0.3s ease-out' }} key={'p'+p.poisonTokens}>{Array(p.poisonTokens).fill('☠️').join('')}</span>}
-                    {(p.shrinkTokens || 0) > 0 && <span style={{ marginLeft: '6px', fontSize: '14px', display: 'inline-block' }} key={'s'+p.shrinkTokens}>{Array(p.shrinkTokens).fill('📉').join('')}</span>}
+                    {p.isBot && <span style={{ marginRight: '4px' }}>🤖</span>}
+                    <strong style={{ color: p.color || 'white' }}>{p.name}</strong> 
+                    {p.poisonTokens > 0 && <span title="Poison: Take 1 damage per poison token at the start of your turn." style={{ cursor: 'help', marginLeft: '6px', color: '#ff4444', fontWeight: 'bold', display: 'inline-block', animation: 'poison-pop 0.3s ease-out' }} key={'p'+p.poisonTokens}>{Array(p.poisonTokens).fill('☠️').join('')}</span>}
+                    {(p.shrinkTokens || 0) > 0 && <span title="Shrink Ray: Roll 1 fewer die per shrink token." style={{ cursor: 'help', marginLeft: '6px', fontSize: '14px', display: 'inline-block' }} key={'s'+p.shrinkTokens}>{Array(p.shrinkTokens).fill('🎲🚫').join('')}</span>}
                   </div>
                   {p.id === gameState.currentTurnPlayerId && p.health > 0 && (
                     <div style={{ animation: gameState.status === 'GameOver' ? 'none' : 'flash-btn 1.5s infinite', animationDelay: `-${Date.now() % 1500}ms`, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--primary)', fontWeight: 'bold' }}>

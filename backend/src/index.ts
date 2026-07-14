@@ -242,13 +242,13 @@ async function resolveDiceAutomatically(gameId: string, socketId: string) {
 
   // Phase 1: Points
   if (results.points > 0) {
-    let pts = results.points;
+    let displayPts = results.points;
     if (p.cards.some(c => c.effect?.omnivore)) {
-      pts += 2;
+      displayPts += 2;
       game.logs.push(`🍖 ${p.name} gained 2 extra VP from Omnivore!`);
     }
-    p.victoryPoints = Math.min(game.settings?.winningVP || 20, p.victoryPoints + pts);
-    game.logs.push(`${p.name} gained ${pts} VP.`);
+    p.victoryPoints = Math.min(game.settings?.winningVP || 20, p.victoryPoints + displayPts);
+    game.logs.push(`${p.name} gained ${results.points} VP.`);
     
     // Only highlight number dice if they actually scored points (count >= 3)
     game.highlightedDice = game.currentDice.filter(d => {
@@ -387,7 +387,7 @@ async function resolveDiceAutomatically(gameId: string, socketId: string) {
           
           if (p.cards.some(c => c.effect?.shrinkRay)) {
             other.shrinkTokens = Math.min(1, (other.shrinkTokens || 0) + 1);
-            modifierLogs.push(`📉 ${other.name} was shrunk!`);
+            modifierLogs.push(`🎲🚫 ${other.name} was shrunk!`);
           }
           if (p.cards.some(c => c.effect?.parasitic)) {
             const actualHeal = Math.min(p.maxHealth || game.settings?.maxHealth || 10, p.health + 1) - p.health;
@@ -467,6 +467,7 @@ async function resolveDiceAutomatically(gameId: string, socketId: string) {
           playerInTokyo.inTokyo = false;
           if (playerInTokyo.cards.some((c: any) => c.effect?.jetpack)) {
             playerInTokyo.energy += 2;
+            if (playerInTokyo.gameStats) playerInTokyo.gameStats.energyGained += 2;
             game.logs.push(`🚀 ${playerInTokyo.name} gained 2 ⚡ from Jetpack for yielding Tokyo!`);
           }
           game.logs.push(`${playerInTokyo.name} yielded Tokyo!`);
@@ -480,6 +481,7 @@ async function resolveDiceAutomatically(gameId: string, socketId: string) {
           playerInTokyo.inTokyo = false;
           if (playerInTokyo.cards.some((c: any) => c.effect?.jetpack)) {
             playerInTokyo.energy += 2;
+            if (playerInTokyo.gameStats) playerInTokyo.gameStats.energyGained += 2;
             game.logs.push(`🚀 ${playerInTokyo.name} gained 2 ⚡ from Jetpack for yielding Tokyo!`);
           }
           game.logs.push(`${playerInTokyo.name} yielded Tokyo!`);
