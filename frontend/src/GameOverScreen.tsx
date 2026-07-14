@@ -170,17 +170,7 @@ export function GameOverScreen({ gameState, onLobbyReturn, onClose }: Props) {
               </LineChart>
             </ResponsiveContainer>
 
-            <h4 style={{ textAlign: 'left', margin: '24px 0 8px 0' }}>Energy</h4>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#444" />
-                <XAxis dataKey="name" stroke="#ccc" tick={false} />
-                <YAxis stroke="#ccc" />
-                {playerIds.map(id => (
-                  <Line key={id} type="monotone" dataKey={`${gameState.players[id].name} Energy`} stroke={gameState.players[id]?.color || '#8884d8'} strokeWidth={3} dot={<CustomDot playerId={id} gameState={gameState} />} />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
+            
           </div>
         )}
       </div>

@@ -508,6 +508,10 @@ function App() {
             <h2 style={{ marginTop: 0, marginBottom: '24px' }}>Game Options</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'left', background: 'rgba(0,0,0,0.3)', padding: '16px', borderRadius: '8px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Starting Dice:</span>
+                <strong>{gameState.settings?.startingDice || 6}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Starting Health:</span>
                 <strong>{gameState.settings?.startingHealth || 10}</strong>
               </div>

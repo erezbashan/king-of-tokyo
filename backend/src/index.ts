@@ -720,7 +720,10 @@ io.on('connection', (socket) => {
       const { rollDice } = require('./gameLogic');
       if (game.currentDice.length === 0) {
         const extraDice = game.players[socket.id].cards.reduce((sum, c) => sum + (c.effect?.extraDie || 0), 0);
-        game.currentDice = rollDice(6 + extraDice);
+        const shrink = game.players[socket.id].shrinkTokens || 0;
+        const base = game.settings?.startingDice || 6;
+        const numDice = Math.max(1, base + extraDice - shrink);
+        game.currentDice = rollDice(numDice);
       } else {
         game.currentDice = game.currentDice.map(d => d.kept ? d : rollDice(1)[0]);
       }

@@ -81,6 +81,7 @@ export interface GameState {
     maxHealth: number;
     startingHealth: number;
     winningVP: number;
+  startingDice?: number;
   };
 }
 
