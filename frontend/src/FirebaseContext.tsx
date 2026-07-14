@@ -62,7 +62,7 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
     createGame: async (username) => {
       if (!playerId) return;
       const gameId = Math.random().toString(36).substring(2, 8).toUpperCase();
-      await gameEngine.joinGame(gameId, username, playerId);
+      await gameEngine.createGame(gameId, playerId, username);
       setCurrentGameId(gameId);
     },
     joinGame: async (gameId, username, prev) => {
