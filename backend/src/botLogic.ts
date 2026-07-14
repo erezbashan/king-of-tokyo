@@ -119,7 +119,11 @@ export async function playBotBuyPhase(gameId: string, games: Record<string, Game
         game.marketCards.splice(cardIndex, 1);
       }
       game.deckCount = game.deck.length;
-      game.logs.push(`BUY_CARD:${bot.name}:${JSON.stringify(cardToBuy)}`);
+      if (bot.gameStats) {
+        bot.gameStats.cardsBought += 1;
+        bot.gameStats.energySpent += cardToBuy.cost;
+      }
+      game.logs.push(`${bot.name} bought ${cardToBuy.name} for ${cardToBuy.cost} ⚡!`);
       
       if (!(game as any).botsMuted && Math.random() > 0.5) {
         if (!(game as any).chatMessages) (game as any).chatMessages = [];

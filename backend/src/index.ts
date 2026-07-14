@@ -253,6 +253,7 @@ async function resolveDiceAutomatically(gameId: string, socketId: string) {
       actualHeal = Math.min((p.maxHealth || 10) - p.health, healsRemaining);
       if (actualHeal > 0) {
         p.health += actualHeal;
+        if (p.gameStats) p.gameStats.healingGained += actualHeal;
         game.logs.push(`${p.name} healed ${actualHeal} ❤️.`);
       }
     }
@@ -480,7 +481,11 @@ io.on('connection', (socket) => {
         
         if (game.history) {
           game.history.forEach(h => {
-            if (h.playerId === previousPlayerId) h.playerId = socket.id;
+            if (h.players && h.players[previousPlayerId]) {
+              h.players[socket.id] = h.players[previousPlayerId];
+              h.players[socket.id].id = socket.id;
+              delete h.players[previousPlayerId];
+            }
           });
         }
         
@@ -683,7 +688,7 @@ io.on('connection', (socket) => {
           }
           // Don't splice yet, we'll replace or splice at the end
           
-          game.logs.push(`BUY_CARD:${player.name}:${JSON.stringify(card)}`);
+          game.logs.push(`${player.name} bought ${card.name} for ${card.cost} ⚡!`);
           game.isAnimating = true;
           game.highlightedStats = [];
           
