@@ -613,6 +613,7 @@ io.on('connection', (socket) => {
       const PLAYER_COLORS = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
       Object.values(game.players).forEach((p, index) => {
         p.color = PLAYER_COLORS[index % PLAYER_COLORS.length];
+        p.health = game.settings?.startingHealth || 10;
         p.gameStats = {
           damageDealt: 0,
           playersKilled: 0,

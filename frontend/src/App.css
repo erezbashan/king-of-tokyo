@@ -197,7 +197,7 @@
   padding: 6px 12px;
   border-radius: 16px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-  animation: pulse 2s infinite;
+  animation: pulse 1.5s infinite;
   text-transform: uppercase;
   letter-spacing: 1px;
 }
@@ -282,7 +282,7 @@
 }
 
 .btn.flash {
-  animation: flash-btn 1s infinite;
+  animation: flash-btn 1.5s infinite;
   z-index: 10;
 }
 

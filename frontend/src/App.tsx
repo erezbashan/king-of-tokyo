@@ -1,9 +1,85 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSocket } from './SocketContext';
 import type { Card } from '@king-of-tokyo/shared';
-import type React from 'react';
 import './App.css';
 import { GameOverScreen } from './GameOverScreen';
+
+
+const renderLogLine = (log: string, i: number, gameState: any, setSelectedCard: any) => {
+  if (log.startsWith('TURN_START:')) {
+    return (
+      <div key={i} style={{ 
+        margin: '12px 0 4px 0', 
+        borderBottom: '1px solid rgba(255,255,255,0.15)'
+      }}></div>
+    );
+  }
+  
+  if (log.startsWith('BUY_CARD:')) {
+    const parts = log.split('BUY_CARD:')[1];
+    const firstColon = parts.indexOf(':');
+    const pName = parts.substring(0, firstColon);
+    const cardJson = parts.substring(firstColon + 1);
+    let card: any = null;
+    try { card = JSON.parse(cardJson); } catch (e) {}
+    
+    return (
+      <div key={i} style={{ 
+        padding: '6px', 
+        background: 'rgba(0,0,0,0.2)', 
+        borderRadius: '4px', 
+      }}>
+        {pName} bought{' '}
+        <span 
+          onClick={() => card && setSelectedCard(card)} 
+          style={{ 
+            cursor: 'pointer', 
+            color: 'var(--primary)', 
+            textDecoration: 'underline',
+            fontWeight: 'bold'
+          }}
+        >
+          {card?.name || 'a card'}
+        </span>
+        .
+      </div>
+    );
+  }
+  
+  const isTurnEnd = log.startsWith('Turn ended.');
+  return (
+    <div key={i} style={{ 
+      padding: '6px', 
+      background: isTurnEnd ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.2)', 
+      borderRadius: '4px', 
+      fontWeight: isTurnEnd ? 'bold' : 'normal',
+      marginTop: isTurnEnd ? '4px' : '0',
+      marginBottom: isTurnEnd ? '4px' : '0'
+    }}>
+      {(() => {
+        const players = Object.values(gameState.players);
+        const sortedPlayers = [...players].sort((a: any, b: any) => b.name.length - a.name.length);
+        
+        const renderText = (logText: string): any => {
+          for (const p of sortedPlayers as any[]) {
+            if (p.name && logText.includes(p.name)) {
+              const split = logText.split(p.name);
+              return (
+                <span key={logText}>
+                  {renderText(split[0])}
+                  <span style={{ color: p.color || 'white', fontWeight: 'bold' }}>{p.name}</span>
+                  {renderText(split.slice(1).join(p.name))}
+                </span>
+              );
+            }
+          }
+          return logText;
+        };
+        return renderText(log);
+      })()}
+    </div>
+  );
+};
 
 function App() {
   const { connected, gameState, playerId, createGame, joinGame, quitGame, returnToLobby, addBot, startGame, rollDice, keepDice, resolveDice, yieldTokyo, buyCard, sweepCards, endTurn, sendChat } = useSocket();
@@ -129,17 +205,17 @@ function App() {
           {gameState.status === 'Lobby' && (
             <div className="glass-panel" style={{ padding: '16px', color: 'white' }}>
               <h3 style={{ marginTop: 0 }}>Game Settings</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  Starting Health:
+              <div style={{ display: 'grid', gridTemplateColumns: 'auto 60px', gap: '12px 16px', alignItems: 'center' }}>
+                <label style={{ display: 'contents' }}>
+                  <span>Starting Health:</span>
                   <input type="number" min="1" max="20" value={localSettings.startingHealth} onChange={e => setLocalSettings(s => ({...s, startingHealth: parseInt(e.target.value)||10}))} style={{ width: '60px', padding: '4px', background: 'rgba(0,0,0,0.3)', color: 'white', border: '1px solid #555' }} />
                 </label>
-                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  Max Health:
+                <label style={{ display: 'contents' }}>
+                  <span>Max Health:</span>
                   <input type="number" min="1" max="30" value={localSettings.maxHealth} onChange={e => setLocalSettings(s => ({...s, maxHealth: parseInt(e.target.value)||10}))} style={{ width: '60px', padding: '4px', background: 'rgba(0,0,0,0.3)', color: 'white', border: '1px solid #555' }} />
                 </label>
-                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  Winning VP:
+                <label style={{ display: 'contents' }}>
+                  <span>Winning VP:</span>
                   <input type="number" min="1" max="50" value={localSettings.winningVP} onChange={e => setLocalSettings(s => ({...s, winningVP: parseInt(e.target.value)||20}))} style={{ width: '60px', padding: '4px', background: 'rgba(0,0,0,0.3)', color: 'white', border: '1px solid #555' }} />
                 </label>
               </div>
@@ -304,80 +380,7 @@ function App() {
                       });
                       const recentLogs = lastTurnIdx !== -1 ? logs.slice(0, lastTurnIdx + 1) : logs;
                       
-                      return recentLogs.map((log, i) => {
-                        if (log.startsWith('TURN_START:')) {
-                          return (
-                            <div key={i} style={{ 
-                              margin: '12px 0 4px 0', 
-                              borderBottom: '1px solid rgba(255,255,255,0.15)'
-                            }}></div>
-                          );
-                        }
-                        
-                        if (log.startsWith('BUY_CARD:')) {
-                          const parts = log.split('BUY_CARD:')[1];
-                          const firstColon = parts.indexOf(':');
-                          const pName = parts.substring(0, firstColon);
-                          const cardJson = parts.substring(firstColon + 1);
-                          let card: any = null;
-                          try { card = JSON.parse(cardJson); } catch (e) {}
-                          
-                          return (
-                            <div key={i} style={{ 
-                              padding: '6px', 
-                              background: 'rgba(0,0,0,0.2)', 
-                              borderRadius: '4px', 
-                            }}>
-                              {pName} bought{' '}
-                              <span 
-                                onClick={() => card && setSelectedCard(card)} 
-                                style={{ 
-                                  cursor: 'pointer', 
-                                  color: 'var(--primary)', 
-                                  textDecoration: 'underline',
-                                  fontWeight: 'bold'
-                                }}
-                              >
-                                {card?.name || 'a card'}
-                              </span>
-                              .
-                            </div>
-                          );
-                        }
-                        
-                        const isTurnEnd = log.startsWith('Turn ended.');
-                        return (
-                          <div key={i} style={{ 
-                            padding: '6px', 
-                            background: isTurnEnd ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.2)', 
-                            borderRadius: '4px', 
-                            fontWeight: isTurnEnd ? 'bold' : 'normal'
-                          }}>
-                            {(() => {
-                      const players = Object.values(gameState.players);
-                      // Sort by name length descending so we match longer names first
-                      const sortedPlayers = [...players].sort((a,b) => b.name.length - a.name.length);
-                      
-                      const renderLog = (logText: string): React.ReactNode => {
-                        for (const p of sortedPlayers) {
-                          if (p.name && logText.includes(p.name)) {
-                            const split = logText.split(p.name);
-                            return (
-                              <>
-                                {renderLog(split[0])}
-                                <span style={{ color: p.color || 'white', fontWeight: 'bold' }}>{p.name}</span>
-                                {renderLog(split.slice(1).join(p.name))}
-                              </>
-                            );
-                          }
-                        }
-                        return logText;
-                      };
-                      return renderLog(log);
-                    })()}
-                          </div>
-                        );
-                      });
+                      return recentLogs.map((log, i) => renderLogLine(log, i, gameState, setSelectedCard));
                     })()}
                   </div>
                 </div>
@@ -562,23 +565,7 @@ function App() {
               <button className="btn secondary" onClick={() => setShowAllLogs(false)}>Close</button>
             </div>
             <div className="log-entries" style={{ flex: 1, overflowY: 'auto', fontSize: '14px', lineHeight: '1.4', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {gameState.logs.slice().reverse().map((log, i) => {
-                const isTurnEnd = log.startsWith('Turn ended.');
-                return (
-                  <div key={i} style={{ 
-                    padding: '8px', 
-                    background: isTurnEnd ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.2)', 
-                    borderRadius: '6px', 
-                    fontWeight: isTurnEnd ? 'bold' : 'normal',
-                    borderTop: isTurnEnd ? '2px solid rgba(255,255,255,0.4)' : 'none',
-                    borderBottom: isTurnEnd ? '2px solid rgba(255,255,255,0.4)' : 'none',
-                    marginTop: isTurnEnd ? '4px' : '0',
-                    marginBottom: isTurnEnd ? '4px' : '0'
-                  }}>
-                    {log}
-                  </div>
-                );
-              })}
+              {gameState.logs.slice().reverse().map((log, i) => renderLogLine(log, i, gameState, setSelectedCard))}
             </div>
           </div>
         </div>
