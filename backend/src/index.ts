@@ -123,7 +123,7 @@ async function startTurn(gameId: string, playerId: string) {
     game.logs.push(`☠️ ${p.name} took ${poisonDmg} poison damage!`);
     if (p.health <= 0) {
       game.logs.push(`💀 ${p.name} was killed!`);
-      if (p.gameStats) p.gameStats.turnDied = game.turnCount;
+      if (p.gameStats) p.gameStats.turnDied = game.history && game.history.length > 0 ? game.history[game.history.length - 1].turnNumber : 0;
     }
     game.isAnimating = true;
     game.highlightedStats = [{ playerId: p.id, stat: 'health' }];
@@ -335,12 +335,18 @@ async function resolveDiceAutomatically(gameId: string, socketId: string) {
           
           if (other.health <= 0) {
             modifierLogs.push(`💀 ${other.name} was killed!`);
+            if (p.gameStats) {
+              p.gameStats.playersKilled = (p.gameStats.playersKilled || 0) + 1;
+            }
+            if (other.gameStats) {
+              other.gameStats.turnDied = game.history && game.history.length > 0 ? game.history[game.history.length - 1].turnNumber : 0;
+            }
           }
         } else if (armor > 0 && dmg > 0) {
            modifierLogs.push(`🛡️ ${other.name}'s Armor completely blocked the attack!`);
         }
         
-        if (other.inTokyo) {
+        if (other.inTokyo && actualDmg > 0) {
           hitTokyoPlayer = true;
           playerInTokyo = other;
         }
@@ -483,10 +489,8 @@ io.on('connection', (socket) => {
         
         if (game.history) {
           game.history.forEach(h => {
-            if (h.players && h.players[previousPlayerId]) {
-              h.players[socket.id] = h.players[previousPlayerId];
-              h.players[socket.id].id = socket.id;
-              delete h.players[previousPlayerId];
+            if (h.playerId === previousPlayerId) {
+              h.playerId = socket.id;
             }
           });
         }
@@ -605,6 +609,7 @@ io.on('connection', (socket) => {
         p.color = PLAYER_COLORS[index % PLAYER_COLORS.length];
         p.gameStats = {
           damageDealt: 0,
+          playersKilled: 0,
           cardsBought: 0,
           energySpent: 0,
           enteredTokyoCount: 0,

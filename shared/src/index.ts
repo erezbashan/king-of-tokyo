@@ -15,6 +15,7 @@ export interface Player {
   poisonTokens: number;
   gameStats?: {
     damageDealt: number;
+    playersKilled: number;
     cardsBought: number;
     energySpent: number;
     enteredTokyoCount: number;

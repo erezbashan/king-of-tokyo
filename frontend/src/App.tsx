@@ -144,7 +144,7 @@ function App() {
                         </div>
                         <button 
                           className={`btn primary ${canBuy && isBuyPhase ? 'flash' : ''}`}
-                          disabled={!canBuy}
+                          disabled={!canBuy || gameState.status === 'GameOver'}
                           onClick={(e) => { e.stopPropagation(); buyCard(gameState.id, card.id); }}
                           style={{ width: '100%', padding: '6px' }}
                         >
@@ -156,7 +156,7 @@ function App() {
                   
                   
                   {gameState.currentTurnPlayerId === playerId && gameState.rollsLeft === 0 && !gameState.isAnimating && (
-                    <div style={{ padding: '8px', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+                    <div style={{ padding: '8px', display: gameState.status === 'GameOver' ? 'none' : 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
                       <button 
                         onClick={() => sweepCards(gameState.id)} 
                         className="btn secondary"
@@ -231,7 +231,7 @@ function App() {
                   </div>
                   
                   {/* Inline Action Buttons */}
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-start' }}>
+                  <div style={{ display: gameState.status === 'GameOver' ? 'none' : 'flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-start' }}>
                     {gameState.currentTurnPlayerId === playerId && gameState.status === 'Playing' ? (
                       <>
                         {gameState.rollsLeft === 3 && (
@@ -422,7 +422,7 @@ function App() {
                   <div className="player-cards" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '8px' }}>
                     {p.cards.map(c => (
                       <div key={c.id} onClick={() => setSelectedCard(c)} style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', border: '1px solid rgba(255,255,255,0.2)' }}>
-                        🎴 {c.name}
+                        {c.name}
                       </div>
                     ))}
                   </div>

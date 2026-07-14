@@ -1,52 +1,39 @@
 const fs = require('fs');
 let content = fs.readFileSync('backend/src/index.ts', 'utf8');
 
-// Fix healingGained
+// Fix turnDied assignment
 content = content.replace(
-  `      if (actualHeal > 0) {
-        p.health += actualHeal;
-        game.logs.push(\`\${p.name} healed \${actualHeal} ❤️.\`);
-      }`,
-  `      if (actualHeal > 0) {
-        p.health += actualHeal;
-        if (p.gameStats) p.gameStats.healingGained += actualHeal;
-        game.logs.push(\`\${p.name} healed \${actualHeal} ❤️.\`);
-      }`
+  `if (p.gameStats) p.gameStats.turnDied = game.turnCount;`,
+  `if (p.gameStats) p.gameStats.turnDied = game.history && game.history.length > 0 ? game.history[game.history.length - 1].turnNumber : 0;`
+);
+content = content.replace(
+  `other.gameStats.turnDied = game.turnCount;`,
+  `other.gameStats.turnDied = game.history && game.history.length > 0 ? game.history[game.history.length - 1].turnNumber : 0;`
 );
 
-// Fix enteredTokyoCount when entering Tokyo due to no one being there
+// Fix h.players error
 content = content.replace(
-  `        p.victoryPoints = Math.min(20, p.victoryPoints + 1);
-        game.logs.push(\`🏙️ \${p.name} entered Tokyo and gained 1 VP!\`);
-      }
-    }
-  }`,
-  `        p.victoryPoints = Math.min(20, p.victoryPoints + 1);
-        if (p.gameStats) p.gameStats.enteredTokyoCount += 1;
-        game.logs.push(\`🏙️ \${p.name} entered Tokyo and gained 1 VP!\`);
-      }
-    }
-  }`
+  `          game.history.forEach(h => {
+            if (h.players && h.players[previousPlayerId]) {
+              h.players[socket.id] = h.players[previousPlayerId];
+              h.players[socket.id].id = socket.id;
+              delete h.players[previousPlayerId];
+            }
+          });`,
+  `          game.history.forEach(h => {
+            if (h.playerId === previousPlayerId) {
+              h.playerId = socket.id;
+            }
+          });`
 );
 
-// Fix enteredTokyoCount when yielding Tokyo
+// Fix missing playersKilled
 content = content.replace(
-  `        attacker.inTokyo = true;
-        attacker.victoryPoints = Math.min(20, attacker.victoryPoints + 1);
-        game.logs.push(\`🏙️ \${attacker.name} takes control of Tokyo!\`);
-      }
-      
-      broadcastState(gameId);`,
-  `        attacker.inTokyo = true;
-        attacker.victoryPoints = Math.min(20, attacker.victoryPoints + 1);
-        if (attacker.gameStats) attacker.gameStats.enteredTokyoCount += 1;
-        game.logs.push(\`🏙️ \${attacker.name} takes control of Tokyo!\`);
-      }
-      
-      broadcastState(gameId);`
+  `damageDealt: 0,
+        cardsBought: 0,`,
+  `damageDealt: 0,
+        playersKilled: 0,
+        cardsBought: 0,`
 );
-
-// Fix bot cardsBought and energySpent (my last string replacement might have missed it if bots don't use 'cardToBuy')
-// Let's check how bot buying works. We should use `replace_file_content` directly if it's too risky.
 
 fs.writeFileSync('backend/src/index.ts', content, 'utf8');
