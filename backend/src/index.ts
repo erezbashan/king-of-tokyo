@@ -283,6 +283,7 @@ async function resolveDiceAutomatically(gameId: string, socketId: string) {
     let hitTokyoPlayer = false;
     let playerInTokyo: any = null;
     const modifierLogs: string[] = [];
+    const targetNames: string[] = [];
 
     Object.values(game.players).forEach(other => {
       if (other.id === p.id) return;
@@ -293,6 +294,7 @@ async function resolveDiceAutomatically(gameId: string, socketId: string) {
                        hasNovaBreath;
 
       if (isTarget) {
+        targetNames.push(other.name);
         const armor = other.cards.reduce((sum: number, c: any) => sum + (c.effect?.armor || 0), 0);
         let dmg = results.attack;
         
@@ -337,11 +339,12 @@ async function resolveDiceAutomatically(gameId: string, socketId: string) {
       }
     });
 
-    if (hitSomeone || modifierLogs.length > 0) {
+    if (hitSomeone || modifierLogs.length > 0 || targetNames.length > 0) {
+      const targetsStr = targetNames.length > 0 ? targetNames.join(', ') : 'no one';
       if (hasNovaBreath) {
-        game.logs.push(`🌊 ${p.name} dealt 💥 damage to ALL other players! (Nova Breath)`);
+        game.logs.push(`🌊 ${p.name} dealt ${results.attack} 💥 damage to ALL other players (${targetsStr})! (Nova Breath)`);
       } else {
-        game.logs.push(`${p.name} dealt 💥 damage!`);
+        game.logs.push(`${p.name} dealt ${results.attack} 💥 damage to ${targetsStr}!`);
       }
       game.logs.push(...modifierLogs);
     }
