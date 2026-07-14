@@ -1,6 +1,7 @@
-import { GameState, Player, Card, DiceRoll, DiceFace, PlayerId } from '@king-of-tokyo/shared';
+import type { GameState, Card } from '@king-of-tokyo/shared';
 import { db } from './firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import type { TurnHistory } from '@king-of-tokyo/shared';
 import { rollDice, evaluateDice, createInitialGameState } from './gameLogic';
 import { playBotTurn, playBotBuyPhase } from './botLogic';
 
@@ -10,7 +11,8 @@ export async function getGame(gameId: string): Promise<GameState | null> {
   const docRef = doc(db, 'games', gameId);
   const snapshot = await getDoc(docRef);
   if (snapshot.exists()) {
-    return snapshot.data() as GameState;
+    const data = snapshot.data();
+    return data ? (data as GameState) : null;
   }
   return null;
 }
@@ -51,6 +53,7 @@ export function checkGameOver(state: GameState): boolean {
 
 export async function startTurn(gameId: string, playerId: string) {
   const game = await getGame(gameId);
+  if (!game) return;
   
   
   
@@ -133,6 +136,7 @@ export async function startTurn(gameId: string, playerId: string) {
 
 export async function endTurnAutomatically(gameId: string, playerId: string) {
   const game = await getGame(gameId);
+  if (!game) return;
   
   
   
@@ -149,7 +153,7 @@ export async function endTurnAutomatically(gameId: string, playerId: string) {
     });
   });
   
-  if (checkGameOver(gameId)) return;
+  if (checkGameOver(game)) return;
   
   const idx = game.playerOrder.indexOf(playerId);
   
@@ -166,6 +170,7 @@ export async function endTurnAutomatically(gameId: string, playerId: string) {
 
 export async function resolveDiceAutomatically(gameId: string, playerId: string) {
   const game = await getGame(gameId);
+  if (!game) return;
   
   
   game.rollsLeft = 0;
@@ -322,7 +327,7 @@ export async function resolveDiceAutomatically(gameId: string, playerId: string)
           dmg += 1;
         }
         
-        const evadeIdx = other.cards.findIndex(c => c.effect?.evade);
+        const evadeIdx = other.cards.findIndex((c: Card) => c.effect?.evade);
         if (evadeIdx !== -1 && dmg > 0) {
           other.cards.splice(evadeIdx, 1);
           dmg = 0;
@@ -495,16 +500,16 @@ export async function resolveDiceAutomatically(gameId: string, playerId: string)
 }
 
 export async function createGame(gameId: string, playerId: string, username: string) {
-    const gameId = Math.random().toString(36).substring(2, 8).toUpperCase();
+    // removed re-declaration of gameId
     const game = createInitialGameState(gameId);
     
     // Add creator
-    games[gameId].players[playerId] = {
+    game.players[playerId] = {
       id: playerId,
       name: username || 'Player 1',
       isBot: false,
-      health: games[gameId] && games[gameId].settings ? games[gameId].settings.startingHealth : 10,
-      maxHealth: games[gameId] && games[gameId].settings ? games[gameId].settings.maxHealth : 10,
+      health: game.settings ? game.settings.startingHealth : 10,
+      maxHealth: game.settings ? game.settings.maxHealth : 10,
       victoryPoints: 0,
       energy: 0,
       inTokyo: false,
@@ -512,7 +517,7 @@ export async function createGame(gameId: string, playerId: string, username: str
       poisonTokens: 0,
       shrinkTokens: 0
     };
-    games[gameId].playerOrder.push(playerId);
+    game.playerOrder.push(playerId);
     
     // socket.join(gameId);
     
@@ -520,11 +525,12 @@ export async function createGame(gameId: string, playerId: string, username: str
 
 }
 
-export async function joinGame(gameId: string, username: string, previousPlayerId?: string, playerId: string) {
+export async function joinGame(gameId: string, username: string, playerId: string, previousPlayerId?: string) {
     const game = await getGame(gameId);
   if (!game) return;
+  if (!game) return;
     if (!game) {
-      console.error(SOCKET_EVENTS.ERROR, 'Game not found');
+      console.error('Game not found');
       return;
     }
     
@@ -545,7 +551,7 @@ export async function joinGame(gameId: string, username: string, previousPlayerI
         if (yieldIdx !== undefined && yieldIdx !== -1) game.pendingYields[yieldIdx] = playerId;
         
         if (game.history) {
-          game.history.forEach(h => {
+          game.history.forEach((h: TurnHistory) => {
             if (h.playerId === previousPlayerId) {
               h.playerId = playerId;
             }
@@ -559,7 +565,7 @@ export async function joinGame(gameId: string, username: string, previousPlayerI
       }
       
       // Fallback: If no valid previous ID, check if there's an orphaned human player with the same name
-      const orphanedHuman = Object.values(game.players).find(p => !p.isBot && p.name === username && !io.sockets.sockets.has(p.id));
+      const orphanedHuman = Object.values(game.players).find(p => !p.isBot && p.name === username && false /* replace logic later */);
       if (orphanedHuman) {
         const oldId = orphanedHuman.id;
         orphanedHuman.id = playerId;
@@ -580,7 +586,7 @@ export async function joinGame(gameId: string, username: string, previousPlayerI
         return;
       }
 
-      console.error(SOCKET_EVENTS.ERROR, 'Game already started');
+      console.error('Game already started');
       return;
     }
 
@@ -588,8 +594,8 @@ export async function joinGame(gameId: string, username: string, previousPlayerI
       id: playerId,
       name: username || `Player ${Object.keys(game.players).length + 1}`,
       isBot: false,
-      health: games[gameId] && games[gameId].settings ? games[gameId].settings.startingHealth : 10,
-      maxHealth: games[gameId] && games[gameId].settings ? games[gameId].settings.maxHealth : 10,
+      health: game.settings ? game.settings.startingHealth : 10,
+      maxHealth: game.settings ? game.settings.maxHealth : 10,
       victoryPoints: 0,
       energy: 0,
       inTokyo: false,
@@ -608,6 +614,7 @@ export async function joinGame(gameId: string, username: string, previousPlayerI
 export async function quitGame(gameId: string, playerId: string) {
     const game = await getGame(gameId);
   if (!game) return;
+  if (!game) return;
     if (game) {
       delete game.players[playerId];
       game.playerOrder = game.playerOrder.filter(id => id !== playerId);
@@ -618,8 +625,9 @@ export async function quitGame(gameId: string, playerId: string) {
 
 }
 
-export async function addBot(gameId: string, playerId: string) {
+export async function addBot(gameId: string, _playerId: string) {
     const game = await getGame(gameId);
+  if (!game) return;
   if (!game) return;
     if (game && game.status === 'Lobby') {
       const botId = `bot_${Math.random().toString(36).substring(2, 8)}`;
@@ -631,8 +639,8 @@ export async function addBot(gameId: string, playerId: string) {
         id: botId,
         name: randomName,
         isBot: true,
-        health: games[gameId] && games[gameId].settings ? games[gameId].settings.startingHealth : 10,
-        maxHealth: games[gameId] && games[gameId].settings ? games[gameId].settings.maxHealth : 10,
+        health: game.settings ? game.settings.startingHealth : 10,
+        maxHealth: game.settings ? game.settings.maxHealth : 10,
         victoryPoints: 0,
         energy: 0,
         inTokyo: false,
@@ -646,8 +654,9 @@ export async function addBot(gameId: string, playerId: string) {
 
 }
 
-export async function returnToLobby(gameId: string, playerId: string) {
+export async function returnToLobby(gameId: string, _playerId: string) {
     const game = await getGame(gameId);
+  if (!game) return;
   if (!game) return;
     if (game && game.status === 'GameOver') {
       game.status = 'Lobby';
@@ -673,6 +682,7 @@ export async function startGame(payload: any) {
     const gameId = typeof payload === 'string' ? payload : payload.gameId;
     const settings = typeof payload === 'string' ? undefined : payload.settings;
     const game = await getGame(gameId);
+  if (!game) return;
   if (!game) return;
     if (game && settings) {
       game.settings = { ...game.settings, ...settings };
@@ -713,13 +723,14 @@ export async function startGame(payload: any) {
 export async function rollDiceAction(gameId: string, playerId: string) {
     const game = await getGame(gameId);
   if (!game) return;
+  if (!game) return;
     if (game && game.currentTurnPlayerId === playerId && game.rollsLeft > 0) {
       game.rollsLeft -= 1;
       
       // Get `rollDice` from gameLogic, we need to import it if not already
       
       if (game.currentDice.length === 0) {
-        const extraDice = game.players[playerId].cards.reduce((sum, c) => sum + (c.effect?.extraDie || 0), 0);
+        const extraDice = game.players[playerId].cards.reduce((sum: number, c: Card) => sum + (c.effect?.extraDie || 0), 0);
         const shrink = game.players[playerId].shrinkTokens || 0;
         const base = game.settings?.startingDice || 6;
         const numDice = Math.max(1, base + extraDice - shrink);
@@ -740,6 +751,7 @@ export async function rollDiceAction(gameId: string, playerId: string) {
 export async function keepDice(gameId: string, diceIds: string[], playerId: string) {
     const game = await getGame(gameId);
   if (!game) return;
+  if (!game) return;
     if (game && game.currentTurnPlayerId === playerId) {
       game.currentDice.forEach(d => {
         d.kept = diceIds.includes(d.id);
@@ -752,6 +764,7 @@ export async function keepDice(gameId: string, diceIds: string[], playerId: stri
 export async function resolveDice(gameId: string, playerId: string) {
     const game = await getGame(gameId);
   if (!game) return;
+  if (!game) return;
     if (game && game.currentTurnPlayerId === playerId) {
       resolveDiceAutomatically(gameId, playerId);
     }
@@ -760,6 +773,7 @@ export async function resolveDice(gameId: string, playerId: string) {
 
 export async function yieldTokyo(gameId: string, choice: boolean, playerId: string) {
     const game = await getGame(gameId);
+  if (!game) return;
   if (!game) return;
     if (game && (window as any)._yieldResolver && game.pendingYields.includes(playerId)) {
       (window as any)._yieldResolver(choice);
@@ -770,6 +784,7 @@ export async function yieldTokyo(gameId: string, choice: boolean, playerId: stri
 
 export async function buyCard(gameId: string, cardId: string, playerId: string) {
     const game = await getGame(gameId);
+  if (!game) return;
   if (!game) return;
     if (game && game.currentTurnPlayerId === playerId && !game.isAnimating) {
       const player = game.players[playerId];
@@ -812,7 +827,7 @@ export async function buyCard(gameId: string, cardId: string, playerId: string) 
               Object.values(game.players).forEach(other => {
                 if (other.id !== player.id && other.health > 0) {
                   const armor = other.cards.reduce((sum, c) => sum + (c.effect?.armor || 0), 0);
-                  const evadeIdx = other.cards.findIndex(c => c.effect?.evade);
+                  const evadeIdx = other.cards.findIndex((c: Card) => c.effect?.evade);
                   if (evadeIdx !== -1) {
                     other.cards.splice(evadeIdx, 1);
                     game.logs.push(`💨 ${other.name} Evaded the spike damage!`);
@@ -836,7 +851,7 @@ export async function buyCard(gameId: string, cardId: string, playerId: string) 
             Object.values(game.players).forEach(other => {
               if (other.health > 0) {
                 const armor = other.cards.reduce((sum, c) => sum + (c.effect?.armor || 0), 0);
-                const evadeIdx = other.cards.findIndex(c => c.effect?.evade);
+                const evadeIdx = other.cards.findIndex((c: Card) => c.effect?.evade);
                 if (evadeIdx !== -1) {
                   other.cards.splice(evadeIdx, 1);
                   game.logs.push(`💨 ${other.name} Evaded High Altitude Bombing!`);
@@ -910,6 +925,7 @@ export async function buyCard(gameId: string, cardId: string, playerId: string) 
 export async function sweepCards(gameId: string, playerId: string) {
     const game = await getGame(gameId);
   if (!game) return;
+  if (!game) return;
     if (game && game.currentTurnPlayerId === playerId && !game.isAnimating) {
       const player = game.players[playerId];
       if (player.energy >= 2) {
@@ -949,6 +965,7 @@ export async function sweepCards(gameId: string, playerId: string) {
 export async function endTurn(gameId: string, playerId: string) {
     const game = await getGame(gameId);
   if (!game) return;
+  if (!game) return;
     if (game && game.currentTurnPlayerId === playerId) {
       endTurnAutomatically(gameId, playerId);
     }
@@ -957,6 +974,7 @@ export async function endTurn(gameId: string, playerId: string) {
 
 export async function sendChat(gameId: string, text: string, playerId: string) {
     const game = await getGame(gameId);
+  if (!game) return;
   if (!game) return;
     if (game) {
       const senderName = game.players[playerId]?.name || 'Unknown';

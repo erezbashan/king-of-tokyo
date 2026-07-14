@@ -1,4 +1,4 @@
-import { GameState } from '@king-of-tokyo/shared';
+import type { GameState } from '@king-of-tokyo/shared';
 import { rollDice } from './gameLogic';
 
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
