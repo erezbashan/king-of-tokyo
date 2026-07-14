@@ -194,12 +194,13 @@ function App() {
             <button onClick={() => setShowStats(true)} className="btn primary">View Stats</button>
             <button onClick={() => returnToLobby(gameState.id)} className="btn primary">Rematch (Keep Players)</button>
             <button onClick={() => window.location.href = '/'} className="btn danger">New Game</button>
+            <button onClick={() => quitGame(gameState.id)} className="btn secondary">Back to Lobby</button>
           </div>
         )}
         <div style={{ display: "flex", gap: "8px", marginLeft: "16px" }}>
           <button onClick={() => setShowHelp(true)} className="btn secondary">Help</button>
           {gameState.status !== 'Lobby' && <button onClick={() => setShowSettings(true)} className="btn secondary">Options</button>}
-          <button onClick={() => quitGame(gameState.id)} className="btn danger">Quit</button>
+          <button onClick={() => quitGame(gameState.id)} className="btn danger">Leave Game</button>
         </div>
       </header>
 
