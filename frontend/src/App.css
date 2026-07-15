@@ -364,11 +364,12 @@
   display: inline-block;
 }
 
-@keyframes dead-flip {
-  0% { transform: rotate(0deg); filter: grayscale(0%); opacity: 1; }
-  100% { transform: rotate(180deg); filter: grayscale(100%); opacity: 0.7; }
+@keyframes dead-fade {
+  0% { filter: grayscale(0%); opacity: 1; transform: scale(1); }
+  50% { transform: scale(0.98); }
+  100% { filter: grayscale(100%); opacity: 0.7; transform: scale(0.98); }
 }
 .player-dead {
-  animation: dead-flip 1.5s forwards ease-in-out;
+  animation: dead-fade 1.5s forwards ease-in-out;
   pointer-events: none;
 }

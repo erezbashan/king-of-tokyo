@@ -18,7 +18,7 @@ const PlayerStat = ({ value, max, icon, isHighlighted, className }: any) => {
   }
   
   const highlightClass = isHighlighted ? (dir.current === 'down' ? 'flash-down' : 'flash-up') : '';
-  return <span className={`stat ${className} ${highlightClass}`} style={className === 'health' ? { display: 'inline-block', minWidth: '75px' } : undefined}>{icon} {value}{max ? ` / ${max}` : ''}</span>;
+  return <span className={`stat ${className} ${highlightClass}`} style={className === 'health' ? { display: 'inline-block', minWidth: '75px' } : undefined}>{icon === '⚡' ? <span className="energy-icon">⚡</span> : icon} {value}{max ? ` / ${max}` : ''}</span>;
 };
 
 const renderLogLine = (log: string, i: number, gameState: any, setSelectedCard: any) => {
@@ -552,7 +552,7 @@ function App() {
             })().map(p => {
               const isMePlayer = p.id === playerId || p.name === username;
               return (
-              <div key={p.id} className={`player-card glass-panel ${p.id === gameState.currentTurnPlayerId ? 'active-turn' : ''} ${isMePlayer ? 'is-me' : ''} ${p.inTokyo ? 'in-tokyo' : ''} ${p.id === gameState.winner ? 'winner-card' : ''} ${p.health <= 0 ? 'player-dead' : ''}`} style={{ marginBottom: '8px', minHeight: '180px' }}>
+              <div key={p.id} className={`player-card glass-panel ${p.id === gameState.currentTurnPlayerId ? 'active-turn' : ''} ${isMePlayer ? 'is-me' : ''} ${p.inTokyo ? 'in-tokyo' : ''} ${p.id === gameState.winner ? 'winner-card' : ''} ${p.health <= 0 ? 'player-dead' : ''}`} style={{ marginBottom: '8px' }}>
                 <div className="player-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
                     {p.isBot && <span style={{ marginRight: '4px' }}>🤖</span>}
