@@ -7,7 +7,7 @@ export const FighterSquadron: CardBehavior = {
     context.log(`✈️ Fighter Squadron dealt 3 damage to all other players!`);
     for (const pId in context.gameState.players) {
       if (pId !== context.playerId) {
-        context.gameState.players[pId].health = Math.max(0, context.gameState.players[pId].health - 3);
+        context.gameState.players[pId].health = Math.max(0, context.gameState.players[pId].health - 2);
         context.highlight(pId, 'health');
       }
     }

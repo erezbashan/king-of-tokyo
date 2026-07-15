@@ -31,6 +31,7 @@ export interface Player {
     vpFromCards?: number;
     turnDied?: number;
   };
+  flags?: Record<string, any>;
 }
 
 export type DiceFace = '1' | '2' | '3' | 'Heart' | 'Lightning' | 'Claw';
@@ -133,6 +134,7 @@ export interface GameState {
   
   // Resolution state
   pendingYields: PlayerId[]; // players asked if they want to yield Tokyo
+  pendingPrompts?: { playerId: string, cardId: string, promptId: string, question: string, options: { label: string, value: string, buttonClass?: string }[] }[];
   pendingWings?: PlayerId[]; // players asked if they want to spend 2 energy to ignore damage
   playerDecisions?: Record<PlayerId, { type: 'Yield' | 'Wings', choice: boolean }>;
   logs: string[];
@@ -190,7 +192,7 @@ export const marketCards: Card[] = [
   { id: 'c7', name: 'Points', cost: 4, type: 'Discard', description: 'Gain 2 VP', effect: { vp: 2 } },
   { id: 'c8', name: 'More Points', cost: 8, type: 'Discard', description: 'Gain 4 VP', effect: { vp: 4 } },
   { id: 'c9', name: 'Poison Spit', cost: 4, type: 'Keep', description: 'When you deal damage, give a Poison token. Poison deals 1 damage at the start of their turn. ❤️ cures Poison before healing.', effect: { poison: true } },
-  { id: 'c10', name: 'Armor', cost: 5, type: 'Keep', description: 'Ignore 1 damage when attacked.', effect: { armor: 1 } },
+  { id: 'c10', name: 'Armor Plating', cost: 4, type: 'Keep', description: 'Ignore damage of 1.', effect: { armor: 1 } },
   { id: 'c11', name: 'Shrink Ray', cost: 6, type: 'Keep', description: 'When you deal damage, give a Shrink token. Shrink tokens reduce dice rolled by 1.', effect: { shrinkRay: true } },
   { id: 'c12', name: 'Jetpack', cost: 5, type: 'Keep', description: 'Gain 2 Energy when you yield Tokyo.', effect: { jetpack: true } },
   { id: 'c13', name: 'Energy Hoarder', cost: 3, type: 'Keep', description: 'Gain 1 extra energy every time you gain energy from dice.', effect: { energyHoarder: true } },
@@ -213,21 +215,21 @@ export const marketCards: Card[] = [
   { id: 'c30', name: 'Spiked Armor', cost: 4, type: 'Keep', description: 'When you are attacked and take damage, the attacker takes 1 damage.', effect: { spikedArmor: true } },
   // ADD NEW CARDS HERE
   { id: 'c31', name: 'Wings', cost: 6, type: 'Keep', description: 'Spend 2 Energy to ignore damage for one turn.', effect: { wings: true } },
-  { id: 'c32', name: 'Gourmet', cost: 4, type: 'Keep', description: 'When scoring points with dice, gain +1 extra VP if scoring 1s.', effect: { gourmet: true } },
+  { id: 'c32', name: 'Gourmet', cost: 4, type: 'Keep', description: 'When scoring 1, 1, 1, you score 2 extra VP.', effect: { gourmet: true } },
   { id: 'c33', name: 'Background Dweller', cost: 4, type: 'Keep', description: 'You can always reroll any 3s you have.', effect: { backgroundDweller: true } },
   { id: 'c34', name: 'Friend of Children', cost: 3, type: 'Keep', description: 'When gaining Energy, gain 1 extra.', effect: { friendOfChildren: true } },
   { id: 'c35', name: 'Gas Refinery', cost: 6, type: 'Discard', description: 'Gain 2 VP and deal 3 damage to all other players.', effect: { vp: 2, spikeDamage: 3 } },
-  { id: 'c36', name: 'Nuclear Power Plant', cost: 6, type: 'Discard', description: 'Heal 3 Health and gain 3 VP.', effect: { heal: 3, vp: 3 } },
+  { id: 'c36', name: 'Nuclear Power Plant', cost: 6, type: 'Discard', description: 'Gain 2 VP and heal 3 Health.', effect: { heal: 3, vp: 2 } },
   { id: 'c37', name: 'Skyscrapers', cost: 6, type: 'Discard', description: 'Gain 4 VP.', effect: { vp: 4 } },
   { id: 'c38', name: 'Corner Store', cost: 3, type: 'Discard', description: 'Gain 1 VP.', effect: { vp: 1 } },
   { id: 'c39', name: 'Energize', cost: 4, type: 'Discard', description: 'Gain 9 energy.', effect: { energy: 9 } },
   { id: 'c40', name: 'Apartment Building', cost: 5, type: 'Discard', description: 'Gain 3 VP.', effect: { vp: 3 } },
   { id: 'c41', name: 'Commuter Train', cost: 4, type: 'Discard', description: 'Gain 2 VP.', effect: { vp: 2 } },
   { id: 'c42', name: 'National Guard', cost: 3, type: 'Discard', description: 'Gain 2 VP and take 2 damage.', effect: { vp: 2, spikeDamage: 0 } }, // Needs custom logic or just vp and health loss
-  { id: 'c43', name: 'Fighter Squadron', cost: 5, type: 'Discard', description: 'Deal 3 damage to all other players.', effect: { spikeDamage: 3 } },
+  { id: 'c43', name: 'Fighter Squadron', cost: 5, type: 'Discard', description: 'Deal 2 damage to all other players.', effect: { spikeDamage: 2 } },
   { id: 'c44', name: 'Rooting For The Underdog', cost: 3, type: 'Keep', description: 'Gain 1 VP at the end of your turn if you have the lowest VP.', effect: { rootingForTheUnderdog: true } },
   { id: 'c45', name: 'We\'re Only Making It Stronger', cost: 3, type: 'Keep', description: 'Gain 1 Energy when you take 2 or more damage.', effect: { weAreOnlyMakingItStronger: true } },
   { id: 'c46', name: 'Urbavore', cost: 4, type: 'Keep', description: 'Gain 1 extra VP when starting turn in Tokyo. Deal 1 extra damage from Tokyo.', effect: { urbavore: true } },
-  { id: 'c47', name: 'Vast Storm', cost: 6, type: 'Discard', description: 'Gain 2 VP. Deal 2 damage to all others.', effect: { vp: 2, spikeDamage: 2 } }
+  { id: 'c47', name: 'Vast Storm', cost: 6, type: 'Discard', description: 'Gain 2 VP. All other monsters lose 2 Energy.', effect: { vp: 2, spikeDamage: 0 } }
 ];
 export * from './cards/index';

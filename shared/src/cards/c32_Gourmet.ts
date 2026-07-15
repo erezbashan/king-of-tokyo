@@ -6,9 +6,9 @@ export const Gourmet: CardBehavior = {
     if (vp > 0) {
       const count1s = ctx.gameState.currentDice.filter(d => d.face === '1').length;
       if (count1s >= 3) {
-        ctx.log(`🍽️ ${ctx.gameState.players[ctx.playerId].name} gains 1 extra ⭐ from Gourmet!`);
+        ctx.log(`🍽️ ${ctx.gameState.players[ctx.playerId].name} gains 2 extra ⭐ from Gourmet!`);
         ctx.highlight(ctx.playerId, 'card:c32');
-        return vp + 1;
+        return vp + 2;
       }
     }
     return vp;
