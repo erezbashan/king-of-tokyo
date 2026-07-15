@@ -99,7 +99,7 @@ export async function startTurn(gameId: string, playerId: string) {
   if (p.inTokyo) {
     p.victoryPoints = Math.min(20, p.victoryPoints + 2);
     if (p.gameStats) p.gameStats.vpFromStartingTokyo = (p.gameStats.vpFromStartingTokyo || 0) + 2;
-    game.logs.push(`👑 ${p.name} started their turn in Tokyo City! (+2 ⭐)`);
+    game.logs.push(`${p.name} started their turn in Tokyo City! (+2 ⭐)`);
     game.highlightedStats.push({ playerId: p.id, stat: 'vp' });
     animatedStart = true;
   }
@@ -230,7 +230,7 @@ export async function resolveDiceAutomatically(gameId: string, playerId: string)
   }
 
   if (results.points > 0) {
-    
+    game.highlightedStats = [{ playerId: p.id, stat: 'vp' }];
     // Only highlight number dice if they actually scored points (count >= 3)
     game.highlightedDice = game.currentDice.filter(d => {
       if (!['1', '2', '3'].includes(d.face)) return false;
@@ -266,7 +266,7 @@ export async function resolveDiceAutomatically(gameId: string, playerId: string)
       p.poisonTokens -= poisonHealed;
       healsRemaining -= poisonHealed;
       if (poisonHealed > 0) {
-        game.logs.push(`☠️ ${p.name} cured ${poisonHealed} poison token(s).`);
+        game.logs.push(`${p.name} cured ${poisonHealed} poison token(s).`);
       }
     }
     
@@ -440,7 +440,7 @@ export async function resolveDiceAutomatically(gameId: string, playerId: string)
         let enterVp = 1;
         p.victoryPoints = Math.min(20, p.victoryPoints + enterVp);
         if (p.gameStats) p.gameStats.vpFromEnteringTokyo = (p.gameStats.vpFromEnteringTokyo || 0) + enterVp;
-        game.logs.push(`👑 ${p.name} entered Tokyo City! (+${enterVp} ⭐)`);
+        game.logs.push(`${p.name} entered Tokyo City! (+${enterVp} ⭐)`);
         game.highlightedStats.push({ playerId: p.id, stat: 'vp' });
         
         for (const b of getBehaviors(p)) {
@@ -696,8 +696,19 @@ export async function rollDiceAction(gameId: string, playerId: string) {
     const game = await getGame(gameId);
   if (!game) return;
   if (!game) return;
-    if (game && game.currentTurnPlayerId === playerId && game.rollsLeft > 0) {
+  
+  const p = game.players[playerId];
+  const hasBackgroundDweller = p?.cards?.some(c => c.effect?.backgroundDweller);
+  const unkeptDice = game.currentDice.filter(d => !d.kept);
+  const canUseBackgroundDweller = hasBackgroundDweller && game.rollsLeft <= 0 && unkeptDice.length > 0 && unkeptDice.every(d => d.face === '3');
+  
+  if (game && game.currentTurnPlayerId === playerId && (game.rollsLeft > 0 || canUseBackgroundDweller)) {
+    if (game.rollsLeft > 0) {
       game.rollsLeft -= 1;
+    } else {
+      game.logs.push(`${p.name} rerolled 3s using Background Dweller!`);
+      game.highlightedStats = [{ playerId: p.id, stat: 'card:c33' }];
+    }
       
       // Get `rollDice` from gameLogic, we need to import it if not already
       

@@ -3,7 +3,7 @@ import { useSocket } from './FirebaseContext';
 import { db } from './engine/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import type { Card } from '@king-of-tokyo/shared';
-import { CardRegistry, marketCards } from '@king-of-tokyo/shared';
+import { marketCards } from '@king-of-tokyo/shared';
 import { getCardCost } from './engine/gameEngine';
 import './App.css';
 import { GameOverScreen } from './GameOverScreen';
@@ -448,28 +448,36 @@ function App() {
                   {/* Inline Action Buttons */}
                   <div style={{ display: gameState.status === 'GameOver' ? 'none' : 'flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-start' }}>
                     {gameState.currentTurnPlayerId === playerId && gameState.status === 'Playing' ? (
-                      <>
-                        {gameState.rollsLeft === 3 && (
-                          <button onClick={() => rollDice(gameState.id)} className="btn primary" style={{ animationDelay: `-${Date.now() % 1500}ms` }} disabled={gameState.isAnimating}>
-                            Roll Dice
-                          </button>
-                        )}
-                        
-                        {gameState.rollsLeft > 0 && gameState.rollsLeft < 3 && (
+                      (() => {
+                        const activeP = gameState.players[playerId!];
+                        const hasBackgroundDweller = activeP?.cards?.some((c: any) => c.effect?.backgroundDweller);
+                        const unkeptDice = gameState.currentDice.filter(d => !d.kept);
+                        const canUseBackgroundDweller = hasBackgroundDweller && gameState.rollsLeft === 0 && unkeptDice.length > 0 && unkeptDice.every(d => d.face === '3');
+                        return (
                           <>
-                            <button onClick={() => rollDice(gameState.id)} className="btn primary" style={{ animationDelay: `-${Date.now() % 1500}ms` }} disabled={gameState.isAnimating}>
-                              Reroll ({gameState.rollsLeft} left)
-                            </button>
-                            <button onClick={() => resolveDice(gameState.id)} className="btn warning" disabled={gameState.isAnimating}>
-                              Done
-                            </button>
+                            {gameState.rollsLeft === 3 && (
+                              <button onClick={() => rollDice(gameState.id)} className="btn primary" style={{ animationDelay: `-${Date.now() % 1500}ms` }} disabled={gameState.isAnimating}>
+                                Roll Dice
+                              </button>
+                            )}
+                            
+                            {(gameState.rollsLeft > 0 && gameState.rollsLeft < 3) || canUseBackgroundDweller ? (
+                              <>
+                                <button onClick={() => rollDice(gameState.id)} className="btn primary" style={{ animationDelay: `-${Date.now() % 1500}ms` }} disabled={gameState.isAnimating}>
+                                  {canUseBackgroundDweller ? 'Reroll 3s (Background Dweller)' : `Reroll (${gameState.rollsLeft} left)`}
+                                </button>
+                                <button onClick={() => resolveDice(gameState.id)} className="btn warning" disabled={gameState.isAnimating}>
+                                  Done
+                                </button>
+                              </>
+                            ) : null}
+                            {gameState.isAnimating && <span style={{ fontSize: '13px', fontStyle: 'italic', marginLeft: '8px', opacity: 0.7 }}>Rolling...</span>}
+                            {gameState.rollsLeft === 0 && !canUseBackgroundDweller && (
+                              <span className="muted" style={{ paddingLeft: '8px' }}>Buy cards or End Turn above ☝️</span>
+                            )}
                           </>
-                        )}
-                        
-                        {gameState.rollsLeft === 0 && (
-                          <span className="muted" style={{ paddingLeft: '8px' }}>Buy cards or End Turn above ☝️</span>
-                        )}
-                      </>
+                        );
+                      })()
                     ) : null}
                   </div>
                 </div>
@@ -573,9 +581,9 @@ function App() {
                   <div>
                     {p.isBot && <span style={{ marginRight: '4px' }}>🤖</span>}
                     <strong style={{ color: p.color || 'white' }}>{p.name}</strong> 
-                    {p.poisonTokens > 0 && <span title="Click for info" onClick={() => setSelectedCard(CardRegistry['t1'] as Card)} className="token-icon" style={{ cursor: 'pointer', marginLeft: '6px', color: '#ff4444', fontWeight: 'bold', display: 'inline-block', animation: 'poison-pop 0.3s ease-out' }} key={'p'+p.poisonTokens}>{Array(p.poisonTokens).fill('☠️').join('')}</span>}
+                    {p.poisonTokens > 0 && <span title="Click for info" onClick={() => setSelectedCard({ id: 't1', name: 'Poison Token', description: 'Take 1 damage at the end of your turn for each Poison token you have. You can heal poison instead of health using ❤️.', type: 'Keep', cost: 0, effect: {} })} className="token-icon" style={{ cursor: 'pointer', marginLeft: '6px', color: '#ff4444', fontWeight: 'bold', display: 'inline-block', animation: 'poison-pop 0.3s ease-out' }} key={'p'+p.poisonTokens}>{Array(p.poisonTokens).fill('☠️').join('')}</span>}
                     {(p.shrinkTokens || 0) > 0 && (
-                      <span title="Click for info" onClick={() => setSelectedCard(CardRegistry['t2'] as Card)} className="token-icon" style={{ cursor: 'pointer', marginLeft: '6px', display: 'inline-flex', gap: '2px', animation: gameState.currentTurnPlayerId === p.id && gameState.rollsLeft > 0 ? 'shake 0.5s infinite' : 'none' }} key={'s'+p.shrinkTokens}>
+                      <span title="Click for info" onClick={() => setSelectedCard({ id: 't2', name: 'Shrink Token', description: 'Roll one less die for each Shrink token you have. You can discard a Shrink token instead of healing health using ❤️.', type: 'Keep', cost: 0, effect: {} })} className="token-icon" style={{ cursor: 'pointer', marginLeft: '6px', display: 'inline-flex', gap: '2px', animation: gameState.currentTurnPlayerId === p.id && gameState.rollsLeft > 0 ? 'shake 0.5s infinite' : 'none' }} key={'s'+p.shrinkTokens}>
                         {Array(p.shrinkTokens).fill(0).map((_, idx) => (
                           <span key={idx} style={{ position: 'relative', display: 'inline-block', width: '20px', height: '20px', fontSize: '16px' }}>
                             <span style={{ position: 'absolute', top: 0, left: 0 }}>🎲</span>
