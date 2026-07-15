@@ -11,7 +11,7 @@ interface FirebaseContextType {
   playerId: string | null;
   createGame: (username: string) => void;
   joinGame: (gameId: string, username: string, previousPlayerId?: string) => void;
-  quitGame: (gameId: string) => void;
+  quitGame: (gameId: string, targetPlayerId?: string) => void;
   returnToLobby: (gameId: string) => void;
   addBot: (gameId: string) => void;
   startGame: (gameId: string, settings?: any) => void;
@@ -60,21 +60,36 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
     gameState,
     playerId,
     createGame: async (username) => {
-      if (!playerId) return;
-      const gameId = Math.random().toString(36).substring(2, 8).toUpperCase();
-      await gameEngine.createGame(gameId, playerId, username);
-      setCurrentGameId(gameId);
+      let pid = playerId;
+      if (!pid) {
+        pid = Math.random().toString(36).substring(2, 10);
+        setPlayerId(pid);
+        localStorage.setItem('kot_playerId', pid);
+      }
+      try {
+        const gameId = Math.random().toString(36).substring(2, 8).toUpperCase();
+        await gameEngine.createGame(gameId, pid, username);
+        setCurrentGameId(gameId);
+      } catch (err) {
+        console.error("Error creating game:", err);
+      }
     },
     joinGame: async (gameId, username, prev) => {
       if (!playerId) return;
       await gameEngine.joinGame(gameId, username, playerId, prev);
       setCurrentGameId(gameId);
     },
-    quitGame: async (gameId) => {
-      if (!playerId) return;
-      await gameEngine.quitGame(gameId, playerId);
-      setCurrentGameId(null);
-      setGameState(null);
+    quitGame: async (gameId, targetPlayerId) => {
+      console.log('quitGame called in Context', gameId, targetPlayerId, playerId);
+      if (!playerId && !targetPlayerId) return;
+      await gameEngine.quitGame(gameId, targetPlayerId || playerId!);
+      if (!targetPlayerId) {
+        setPlayerId(null);
+        localStorage.removeItem('kot_playerId');
+        setCurrentGameId(null);
+        setGameState(null);
+        window.history.replaceState(null, '', window.location.pathname);
+      }
     },
     returnToLobby: async (gameId) => {
       if (!playerId) return;
@@ -104,6 +119,7 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
       if (!playerId) return;
       await gameEngine.yieldTokyo(gameId, yieldChoice, playerId);
     },
+
     buyCard: async (gameId, cardId) => {
       if (!playerId) return;
       await gameEngine.buyCard(gameId, cardId, playerId);

@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSocket } from './FirebaseContext';
+import { db } from './engine/firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import type { Card } from '@king-of-tokyo/shared';
+import { CardRegistry, marketCards } from '@king-of-tokyo/shared';
 import './App.css';
 import { GameOverScreen } from './GameOverScreen';
 
@@ -59,16 +62,35 @@ const renderLogLine = (log: string, i: number, gameState: any, setSelectedCard: 
       {(() => {
         const players = Object.values(gameState.players);
         const sortedPlayers = [...players].sort((a: any, b: any) => b.name.length - a.name.length);
+        const sortedCards = [...marketCards].sort((a: any, b: any) => b.name.length - a.name.length);
         
         const renderText = (logText: string): any => {
           for (const p of sortedPlayers as any[]) {
             if (p.name && logText.includes(p.name)) {
               const split = logText.split(p.name);
               return (
-                <span key={logText}>
+                <span key={logText + p.name}>
                   {renderText(split[0])}
                   <span style={{ color: p.color || 'white', fontWeight: 'bold' }}>{p.name}</span>
                   {renderText(split.slice(1).join(p.name))}
+                </span>
+              );
+            }
+          }
+          
+          for (const c of sortedCards as any[]) {
+            if (c.name && logText.includes(c.name)) {
+              const split = logText.split(c.name);
+              return (
+                <span key={logText + c.name}>
+                  {renderText(split[0])}
+                  <span 
+                    onClick={() => setSelectedCard(c)} 
+                    style={{ cursor: 'pointer', color: 'var(--primary)', textDecoration: 'underline', fontWeight: 'bold' }}
+                  >
+                    {c.name}
+                  </span>
+                  {renderText(split.slice(1).join(c.name))}
                 </span>
               );
             }
@@ -106,29 +128,54 @@ function App() {
     return () => clearTimeout(timerId);
   }, [gameState?.status]);
   const [showAllLogs, setShowAllLogs] = useState(false);
+  const [showFullChat, setShowFullChat] = useState(false);
   const [chatText, setChatText] = useState('');
   const chatBottomRef = useRef<HTMLDivElement>(null);
-    const initialPlayerIdRef = useRef<string | null>(localStorage.getItem('kot_playerId') || null);
+  const initialPlayerIdRef = useRef<string | null>(localStorage.getItem('kot_playerId') || null);
+  const [pendingGames, setPendingGames] = useState<{id: string, players: number}[]>([]);
+
+  useEffect(() => {
+    if (!gameState) {
+      const q = query(collection(db, 'games'), where('status', '==', 'Lobby'));
+      const unsub = onSnapshot(q, (snapshot) => {
+        const games: any[] = [];
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          games.push({ id: doc.id, players: Object.keys(data.players || {}).length });
+        });
+        setPendingGames(games);
+      });
+      return () => unsub();
+    }
+  }, [gameState]);
 
   useEffect(() => {
     if (gameState?.id) {
       window.history.replaceState(null, '', `?game=${gameState.id}`);
-    } else {
-      window.history.replaceState(null, '', window.location.pathname);
     }
   }, [gameState?.id]);
 
   useEffect(() => {
-    if (connected) {
+    import('firebase/firestore').then(({ doc, onSnapshot }) => {
+      const unsub = onSnapshot(doc(db, 'settings', 'version'), (docSnap) => {
+        const APP_VERSION = 7; // Increment this to force all clients to reload
+        if (docSnap.exists() && docSnap.data().value > APP_VERSION) {
+          window.location.reload();
+        }
+      });
+      return () => unsub();
+    });
+  }, []);
+
+  useEffect(() => {
+    if (connected && playerId) {
       const urlParams = new URLSearchParams(window.location.search);
       const gameParam = urlParams.get('game');
-      if (gameParam) {
-        // Use the current playerId if we have one (from before disconnect), otherwise fallback to the initial one
-        const currentId = playerId || initialPlayerIdRef.current || undefined;
-        joinGame(gameParam, username, currentId);
+      if (gameParam && !gameState) {
+        joinGame(gameParam, username, playerId);
       }
     }
-  }, [connected]); // Re-join the room anytime we reconnect
+  }, [connected, playerId]); // Re-join the room anytime we reconnect or initialize playerId
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -173,6 +220,19 @@ function App() {
           />
           <button onClick={handleJoinGame} disabled={!username || !gameIdInput} className="btn secondary">Join Game</button>
         </div>
+        {pendingGames.length > 0 && (
+          <div className="lobby-card glass-panel" style={{ marginTop: '20px' }}>
+            <h3 style={{ margin: '0 0 10px 0', textAlign: 'center' }}>Pending Games</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {pendingGames.map(pg => (
+                <div key={pg.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: '4px' }}>
+                  <span>{pg.id} ({pg.players} players)</span>
+                  <button onClick={() => { setGameIdInput(pg.id); joinGame(pg.id, username); }} disabled={!username} className="btn secondary" style={{ padding: '4px 12px', fontSize: '12px' }}>Join</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -200,7 +260,7 @@ function App() {
         <div style={{ display: "flex", gap: "8px", marginLeft: "16px" }}>
           <button onClick={() => setShowHelp(true)} className="btn secondary">Help</button>
           {gameState.status !== 'Lobby' && <button onClick={() => setShowSettings(true)} className="btn secondary">Options</button>}
-          <button onClick={() => quitGame(gameState.id)} className="btn danger">Leave Game</button>
+          {gameState.status !== 'GameOver' && <button onClick={() => quitGame(gameState.id)} className="btn danger">Leave Game</button>}
         </div>
       </header>
 
@@ -236,25 +296,23 @@ function App() {
                   {gameState.marketCards.map(card => {
                     const myEnergy = gameState.players[playerId!]?.energy || 0;
                     const isMyTurn = gameState.currentTurnPlayerId === playerId;
-                    const isBuyPhase = isMyTurn && gameState.rollsLeft === 0 && !gameState.isAnimating;
                     const canBuy = isMyTurn && myEnergy >= card.cost && !gameState.isAnimating;
                     return (
                       <div key={card.id} className="card-item glass-panel" style={{ width: '160px', height: '180px', flexShrink: 0, display: 'flex', flexDirection: 'column', padding: '8px', cursor: 'pointer' }} onClick={() => setSelectedCard(card)}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                           <strong>{card.name}</strong>
-                          <span className="stat energy">{card.cost} ⚡</span>
                         </div>
                         <div style={{ fontSize: '11px', flex: 1, marginBottom: '8px', color: 'rgba(255,255,255,0.7)' }}>
                           <em>{card.type}</em><br/>
                           {card.description}
                         </div>
                         <button 
-                          className={`btn primary ${canBuy && isBuyPhase ? 'flash' : ''}`}
+                          className="btn primary"
                           disabled={!canBuy || gameState.status === 'GameOver'}
                           onClick={(e) => { e.stopPropagation(); buyCard(gameState.id, card.id); }}
                           style={{ width: '100%', padding: '6px' }}
                         >
-                          Buy
+                          Buy for {card.cost} ⚡
                         </button>
                       </div>
                     );
@@ -273,7 +331,7 @@ function App() {
                       </button>
                       <button 
                         onClick={() => endTurn(gameState.id)} 
-                        className="btn warning flash"
+                        className="btn warning"
                         style={{ whiteSpace: 'nowrap', padding: '16px 24px', fontSize: '16px', width: '100%' }}
                       >
                         End Turn
@@ -341,17 +399,17 @@ function App() {
                     {gameState.currentTurnPlayerId === playerId && gameState.status === 'Playing' ? (
                       <>
                         {gameState.rollsLeft === 3 && (
-                          <button onClick={() => rollDice(gameState.id)} className="btn primary flash" style={{ animationDelay: `-${Date.now() % 1500}ms` }} disabled={gameState.isAnimating}>
+                          <button onClick={() => rollDice(gameState.id)} className="btn primary" style={{ animationDelay: `-${Date.now() % 1500}ms` }} disabled={gameState.isAnimating}>
                             Roll Dice
                           </button>
                         )}
                         
                         {gameState.rollsLeft > 0 && gameState.rollsLeft < 3 && (
                           <>
-                            <button onClick={() => rollDice(gameState.id)} className="btn primary flash" style={{ animationDelay: `-${Date.now() % 1500}ms` }} disabled={gameState.isAnimating}>
+                            <button onClick={() => rollDice(gameState.id)} className="btn primary" style={{ animationDelay: `-${Date.now() % 1500}ms` }} disabled={gameState.isAnimating}>
                               Reroll ({gameState.rollsLeft} left)
                             </button>
-                            <button onClick={() => resolveDice(gameState.id)} className="btn warning flash" disabled={gameState.isAnimating}>
+                            <button onClick={() => resolveDice(gameState.id)} className="btn warning" disabled={gameState.isAnimating}>
                               Done
                             </button>
                           </>
@@ -377,34 +435,59 @@ function App() {
                     {(() => {
                       const myName = gameState.players[playerId!]?.name || username || '';
                       const logs = gameState.logs.slice().reverse();
-                      let matches = 0;
-                      const targetMatches = gameState.currentTurnPlayerId === playerId ? 2 : 1;
-                      const lastTurnIdx = logs.findIndex(l => {
-                        if (l === `TURN_START:${myName}` || l === 'Game started!') {
-                          matches++;
-                          return matches === targetMatches;
+                      let myMatches = 0;
+                      let totalTurns = 0;
+                      const targetMyMatches = gameState.currentTurnPlayerId === playerId ? 2 : 1;
+                      
+                      let lastTurnIdx = -1;
+                      let fifthTurnIdx = -1;
+
+                      for (let i = 0; i < logs.length; i++) {
+                        const l = logs[i];
+                        if (l.startsWith('TURN_START:') || l === 'Game started!') {
+                          totalTurns++;
+                          if (totalTurns === 6 && fifthTurnIdx === -1) {
+                            fifthTurnIdx = i; // Include the 5th turn start completely
+                          }
+                          if ((l === `TURN_START:${myName}` || l === 'Game started!') && lastTurnIdx === -1) {
+                            myMatches++;
+                            if (myMatches === targetMyMatches) {
+                              lastTurnIdx = i;
+                            }
+                          }
                         }
-                        return false;
-                      });
-                      const recentLogs = lastTurnIdx !== -1 ? logs.slice(0, lastTurnIdx + 1) : logs;
+                      }
+                      
+                      if (fifthTurnIdx === -1) fifthTurnIdx = logs.length - 1;
+                      if (lastTurnIdx === -1) lastTurnIdx = logs.length - 1;
+                      
+                      const maxIdx = Math.max(lastTurnIdx, fifthTurnIdx);
+                      const recentLogs = logs.slice(0, maxIdx + 1);
                       
                       return recentLogs.map((log, i) => renderLogLine(log, i, gameState, setSelectedCard));
                     })()}
                   </div>
                 </div>
 
-                <div className="chat-panel glass-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, padding: '12px' }}>
-                  <h3 style={{ margin: '0 0 8px 0', fontSize: '14px' }}>Chat</h3>
-                  <div className="chat-messages" style={{ flex: 1, overflowY: 'auto', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
-                    {(gameState as any).chatMessages?.map((msg: any, i: number) => (
-                      <div key={i} style={{ background: 'rgba(0,0,0,0.3)', padding: '6px', borderRadius: '6px' }}>
-                        {(() => {
-                          const senderPlayer = Object.values(gameState.players).find(p => p.name === msg.sender);
-                          const color = senderPlayer?.color || 'var(--primary)';
-                          return <><strong style={{ color }}>{msg.sender}:</strong> {msg.text}</>;
-                        })()}
-                      </div>
-                    ))}
+                <div className="chat-panel glass-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, padding: '12px', overflow: 'hidden' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <h3 style={{ margin: 0, fontSize: '14px' }}>Chat</h3>
+                    <button onClick={() => setShowFullChat(true)} className="btn secondary" style={{ padding: '4px 8px', fontSize: '11px' }}>View All</button>
+                  </div>
+                  <div className="chat-messages" style={{ flex: 1, overflowY: 'hidden', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
+                    {(() => {
+                        const msgs = (gameState as any).chatMessages || [];
+                        const recent = msgs.slice(Math.max(msgs.length - 8, 0));
+                        return recent.map((msg: any, i: number) => (
+                          <div key={i} style={{ background: 'rgba(0,0,0,0.3)', padding: '6px', borderRadius: '6px' }}>
+                            {(() => {
+                              const senderPlayer = Object.values(gameState.players).find(p => p.name === msg.sender);
+                              const color = senderPlayer?.color || 'var(--primary)';
+                              return <><strong style={{ color }}>{msg.sender}:</strong> {msg.text}</>;
+                            })()}
+                          </div>
+                        ));
+                    })()}
                     <div ref={chatBottomRef} />
                   </div>
                   <form onSubmit={e => { e.preventDefault(); sendChat(gameState.id, chatText); setChatText(''); }} style={{ display: 'flex', gap: '4px' }}>
@@ -439,14 +522,27 @@ function App() {
                   <div>
                     {p.isBot && <span style={{ marginRight: '4px' }}>🤖</span>}
                     <strong style={{ color: p.color || 'white' }}>{p.name}</strong> 
-                    {p.poisonTokens > 0 && <span title="Poison: Take 1 damage per poison token at the start of your turn." style={{ cursor: 'help', marginLeft: '6px', color: '#ff4444', fontWeight: 'bold', display: 'inline-block', animation: 'poison-pop 0.3s ease-out' }} key={'p'+p.poisonTokens}>{Array(p.poisonTokens).fill('☠️').join('')}</span>}
-                    {(p.shrinkTokens || 0) > 0 && <span title="Shrink Ray: Roll 1 fewer die per shrink token." style={{ cursor: 'help', marginLeft: '6px', fontSize: '14px', display: 'inline-block' }} key={'s'+p.shrinkTokens}>{Array(p.shrinkTokens).fill('🎲🚫').join('')}</span>}
+                    {p.poisonTokens > 0 && <span title="Click for info" onClick={() => setSelectedCard(CardRegistry['t1'] as Card)} className="token-icon" style={{ cursor: 'pointer', marginLeft: '6px', color: '#ff4444', fontWeight: 'bold', display: 'inline-block', animation: 'poison-pop 0.3s ease-out' }} key={'p'+p.poisonTokens}>{Array(p.poisonTokens).fill('☠️').join('')}</span>}
+                    {(p.shrinkTokens || 0) > 0 && (
+                      <span title="Click for info" onClick={() => setSelectedCard(CardRegistry['t2'] as Card)} className="token-icon" style={{ cursor: 'pointer', marginLeft: '6px', display: 'inline-flex', gap: '2px', animation: gameState.currentTurnPlayerId === p.id && gameState.rollsLeft > 0 ? 'shake 0.5s infinite' : 'none' }} key={'s'+p.shrinkTokens}>
+                        {Array(p.shrinkTokens).fill(0).map((_, idx) => (
+                          <span key={idx} style={{ position: 'relative', display: 'inline-block', width: '20px', height: '20px', fontSize: '16px' }}>
+                            <span style={{ position: 'absolute', top: 0, left: 0 }}>🎲</span>
+                            <span style={{ position: 'absolute', top: '-3px', left: '-3px', fontSize: '18px', color: 'red', textShadow: '0 0 2px black' }}>🚫</span>
+                          </span>
+                        ))}
+                      </span>
+                    )}
+                    {gameState.status === 'Lobby' && p.isBot && (
+                      <button 
+                        onClick={() => quitGame(gameState.id, p.id)}
+                        style={{ marginLeft: '8px', padding: '2px 8px', background: 'var(--danger)', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}
+                        title="Remove Bot"
+                      >
+                        Remove
+                      </button>
+                    )}
                   </div>
-                  {p.id === gameState.currentTurnPlayerId && p.health > 0 && gameState.status !== 'GameOver' && (
-                    <div style={{ animation: 'flash-btn 1.5s infinite', animationDelay: `-${Date.now() % 1500}ms`, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--primary)', fontWeight: 'bold', margin: '4px 8px' }}>
-                      <span style={{ fontSize: '12px' }}>PLAYING</span> ◀️
-                    </div>
-                  )}
                 </div>
                 <div className="player-stats" style={{ fontVariantNumeric: 'tabular-nums' }}>
                   <span className={`stat health ${gameState.highlightedStats?.some(s => s.playerId === p.id && s.stat === 'health') ? 'flash' : ''}`} style={{ display: 'inline-block', minWidth: '75px' }}>❤️ {Math.max(0, p.health)} / {p.maxHealth || 10}</span>
@@ -456,20 +552,29 @@ function App() {
                 {p.cards && p.cards.length > 0 && (
                   <div className="player-cards" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '8px' }}>
                     {p.cards.map(c => (
-                      <div key={c.id} onClick={() => setSelectedCard(c)} style={{ cursor: 'pointer', background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', border: '1px solid rgba(255,255,255,0.2)' }}>
+                      <div key={c.id} onClick={() => setSelectedCard(c)} className={`player-card-item ${gameState.highlightedStats?.some(s => s.playerId === p.id && s.stat === `card:${c.id}`) ? 'flash-card' : ''}`}>
                         {c.name}
                       </div>
                     ))}
                   </div>
                 )}
                 
-                {p.id === gameState.winner ? (
-                  <div className="tokyo-badge" style={{ background: '#fbbf24', color: '#78350f', borderColor: '#f59e0b', boxShadow: '0 0 20px rgba(251, 191, 36, 0.8)', animation: 'pulse-glow 1.5s infinite' }}>WINNER 🏆</div>
-                ) : p.health <= 0 ? (
-                  <div className="tokyo-badge" style={{ background: 'var(--danger)', color: 'white', borderColor: '#7f1d1d', boxShadow: '0 0 10px rgba(239, 68, 68, 0.4)' }}>DEAD</div>
-                ) : p.inTokyo ? (
-                  <div className="tokyo-badge">IN TOKYO</div>
-                ) : null}
+                <div style={{ position: 'absolute', top: '50%', right: '16px', transform: 'translateY(-50%)', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+                  {p.id === gameState.currentTurnPlayerId && p.health > 0 && gameState.status !== 'GameOver' && (
+                    <div style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px', color: 'black', background: 'var(--primary)', padding: '4px 12px', borderRadius: '4px', fontWeight: '900', letterSpacing: '1px', border: '1px solid rgba(255, 255, 255, 0.5)', boxShadow: '0 4px 6px rgba(0,0,0,0.3)', textShadow: '0 1px 2px rgba(255,255,255,0.5)', animation: 'playing-pulse 2s infinite' }}>
+                      PLAYING ◀️
+                    </div>
+                  )}
+                  {p.id === gameState.winner ? (
+                    <div className="tokyo-badge" style={{ background: '#fbbf24', color: '#78350f', borderColor: '#f59e0b', boxShadow: '0 0 20px rgba(251, 191, 36, 0.8)', animation: 'pulse-glow 1.5s infinite' }}>WINNER 🏆</div>
+                  ) : p.health <= 0 ? (
+                    <div className="tokyo-badge" style={{ background: 'var(--danger)', color: 'white', borderColor: '#7f1d1d', boxShadow: '0 0 10px rgba(239, 68, 68, 0.4)' }}>DEAD</div>
+                  ) : p.inTokyo ? (
+                    <div className="tokyo-badge">
+                      {p.inTokyoBay ? 'IN TOKYO BAY' : 'IN TOKYO CITY'}
+                    </div>
+                  ) : null}
+                </div>
 
               </div>
               );
@@ -498,12 +603,14 @@ function App() {
             <h2 style={{ color: 'var(--warning)', marginTop: 0 }}>You took damage in Tokyo!</h2>
             <p style={{ fontSize: '18px', marginBottom: '24px' }}>Do you want to yield Tokyo to your attacker?</p>
             <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
-              <button className="btn primary flash" style={{ animationDelay: `-${Date.now() % 1500}ms` }} onClick={() => yieldTokyo(gameState.id, true)}>Yield</button>
-              <button className="btn secondary flash" onClick={() => yieldTokyo(gameState.id, false)}>Stay</button>
+              <button className="btn primary" style={{ animationDelay: `-${Date.now() % 1500}ms` }} onClick={() => yieldTokyo(gameState.id, true)}>Yield</button>
+              <button className="btn secondary" onClick={() => yieldTokyo(gameState.id, false)}>Stay</button>
             </div>
           </div>
         </div>
       )}
+
+
 
       {showSettings && gameState.status !== 'Lobby' && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
@@ -556,6 +663,39 @@ function App() {
             <div style={{ marginTop: '32px', textAlign: 'right' }}>
               <button className="btn primary" onClick={() => setShowHelp(false)}>Got it!</button>
             </div>
+          </div>
+        </div>
+      )}
+      
+      {showAllLogs && (
+        <div className="modal-overlay" onClick={() => setShowAllLogs(false)}>
+          <div className="modal-content log-modal" onClick={e => e.stopPropagation()}>
+            <h2>Full Game Log</h2>
+            <div className="log-messages full-log" style={{ overflowY: 'auto', flex: 1, marginTop: '10px' }}>
+              {gameState.logs.map((log, i) => renderLogLine(log, i, gameState, setSelectedCard))}
+            </div>
+            <button className="btn primary" onClick={() => setShowAllLogs(false)} style={{ marginTop: '15px' }}>Close</button>
+          </div>
+        </div>
+      )}
+
+      {showFullChat && (
+        <div className="modal-overlay" onClick={() => setShowFullChat(false)}>
+          <div className="modal-content log-modal" onClick={e => e.stopPropagation()}>
+            <h2>Full Chat</h2>
+            <div className="log-messages full-log" style={{ overflowY: 'auto', flex: 1, marginTop: '10px' }}>
+              {((gameState as any).chatMessages || []).map((msg: any, i: number) => {
+                  const senderPlayer = Object.values(gameState.players).find(p => p.name === msg.sender);
+                  const color = senderPlayer?.color || 'var(--primary)';
+                  return (
+                    <div key={i} style={{ background: 'rgba(0,0,0,0.3)', padding: '6px', borderRadius: '6px', marginBottom: '6px' }}>
+                      <strong style={{ color }}>{msg.sender}:</strong> {msg.text}
+                    </div>
+                  );
+              })}
+              <div ref={chatBottomRef} />
+            </div>
+            <button className="btn primary" onClick={() => setShowFullChat(false)} style={{ marginTop: '15px' }}>Close</button>
           </div>
         </div>
       )}

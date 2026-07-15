@@ -126,5 +126,6 @@ export async function playBotBuyPhase(gameId: string, game: GameState, saveGame:
     canAfford = game.marketCards.filter(c => c.cost <= bot.energy);
   }
 
+  await saveGame(gameId, game);
   await endTurnAutomatically(gameId, bot.id);
 }

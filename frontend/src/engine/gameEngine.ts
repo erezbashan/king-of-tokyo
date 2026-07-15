@@ -1,11 +1,29 @@
-import type { GameState, Card } from '@king-of-tokyo/shared';
+import type { GameState, TurnHistory, Player } from '@king-of-tokyo/shared';
+import { CardRegistry } from '@king-of-tokyo/shared';
 import { db } from './firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import type { TurnHistory } from '@king-of-tokyo/shared';
 import { rollDice, evaluateDice, createInitialGameState } from './gameLogic';
 import { playBotTurn, playBotBuyPhase } from './botLogic';
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+export const createEventContext = (gameState: GameState, playerId: string) => ({
+  gameState,
+  playerId,
+  log: (msg: string) => {
+    if (!gameState.logs.includes(msg)) gameState.logs.push(msg);
+  },
+  highlight: (id: string, stat: string) => {
+    gameState.highlightedStats.push({ playerId: id, stat });
+  }
+});
+
+export const getBehaviors = (player: Player) => {
+  const behaviors = player.cards.map((c: any) => CardRegistry[c.id]).filter(Boolean);
+  if (player.poisonTokens > 0) behaviors.push(CardRegistry['t1']);
+  if (player.shrinkTokens > 0) behaviors.push(CardRegistry['t2']);
+  return behaviors;
+};
 
 export async function getGame(gameId: string): Promise<GameState | null> {
   const docRef = doc(db, 'games', gameId);
@@ -61,7 +79,13 @@ export async function startTurn(gameId: string, playerId: string) {
   if (!p) return;
 
   game.currentTurnPlayerId = playerId;
-  game.rollsLeft = p.cards.some(c => c.effect?.giantBrain) ? 4 : 3;
+  let rolls = 3;
+  const ctx = createEventContext(game, p.id);
+  const behaviors = getBehaviors(p);
+  for (const b of behaviors) {
+    if (b?.onDetermineRolls) rolls = b.onDetermineRolls(ctx, rolls);
+  }
+  game.rollsLeft = rolls;
   console.log(`[DEBUG] ${gameId}: startTurn for ${playerId}. rollsLeft is now 3.`);
   game.currentDice = [];
   game.pendingYields = [];
@@ -77,22 +101,13 @@ export async function startTurn(gameId: string, playerId: string) {
     game.highlightedStats.push({ playerId: p.id, stat: 'vp' });
     animatedStart = true;
   }
-  if (p.cards.some(c => c.effect?.rapidHealing)) {
-    const healAmt = Math.min(p.maxHealth || game.settings?.maxHealth || 10, p.health + 1) - p.health;
-    if (healAmt > 0) {
-      p.health += healAmt;
-      game.logs.push(`💖 ${p.name} healed 1 ❤️ from Rapid Healing!`);
-      game.highlightedStats.push({ playerId: p.id, stat: 'health' });
-      animatedStart = true;
-    }
+  const oldLogLen = game.logs.length;
+  for (const b of behaviors) {
+    if (b?.onTurnStart) b.onTurnStart(ctx);
   }
-  if (p.gameStats) (p as any).dealtDamageThisTurn = false;
-  if (p.cards.some(c => c.effect?.solarPowered) && p.energy === 0) {
-    p.energy += 1;
-    game.logs.push(`☀️ ${p.name} gained 1 ⚡ from Solar Powered!`);
-    game.highlightedStats.push({ playerId: p.id, stat: 'energy' });
-    animatedStart = true;
-  }
+  if (game.logs.length > oldLogLen) animatedStart = true;
+  
+  (p as any).dealtDamageThisTurn = false;
   if (animatedStart) {
     game.isAnimating = true;
     await saveGame(gameId, game);
@@ -101,27 +116,12 @@ export async function startTurn(gameId: string, playerId: string) {
     game.highlightedStats = [];
   }
   
-  if (p.poisonTokens > 0) {
-    const poisonDmg = Math.min(p.health, p.poisonTokens);
-    p.health -= poisonDmg;
-    game.logs.push(`☠️ ${p.name} took ${poisonDmg} poison damage!`);
-    if (p.health <= 0) {
-      game.logs.push(`💀 ${p.name} was killed!`);
-      if (p.gameStats) p.gameStats.turnDied = game.history && game.history.length > 0 ? game.history[game.history.length - 1].turnNumber : 0;
-    }
-    game.isAnimating = true;
-    game.highlightedStats = [{ playerId: p.id, stat: 'health' }];
-    await saveGame(gameId, game);
-    
-    await delay(1500);
-    game.isAnimating = false;
-    
-    if (p.health <= 0) {
-      p.inTokyo = false;
-      game.logs.push(`☠️ ${p.name} was eliminated by poison!`);
-      endTurnAutomatically(gameId, p.id);
-      return;
-    }
+  if (p.health <= 0) {
+    p.inTokyo = false;
+    game.logs.push(`💀 ${p.name} was killed!`);
+    if (p.gameStats) p.gameStats.turnDied = game.history && game.history.length > 0 ? game.history[game.history.length - 1].turnNumber : 0;
+    endTurnAutomatically(gameId, p.id);
+    return;
   }
 
   // Always broadcast state so clients know whose turn it is
@@ -152,6 +152,15 @@ export async function endTurnAutomatically(gameId: string, playerId: string) {
       tokyoPlayerId: Object.values(game.players).find(x => x.inTokyo)?.id || null
     });
   });
+  
+  const ctx = createEventContext(game, playerId);
+  let oldVp = game.players[playerId].victoryPoints;
+  for (const b of getBehaviors(game.players[playerId])) {
+    if (b?.onTurnEnd) b.onTurnEnd(ctx);
+  }
+  if (game.players[playerId].victoryPoints !== oldVp || game.logs.length > 0) { // wait, game.logs always has length > 0... actually let's just saveGame unconditionally
+    await saveGame(gameId, game);
+  }
   
   if (checkGameOver(game)) return;
   
@@ -196,19 +205,13 @@ export async function resolveDiceAutomatically(gameId: string, playerId: string)
   // Phase 1: Points
   if (results.points > 0) {
     let displayPts = results.points;
-    if (p.cards.some(c => c.effect?.omnivore)) {
-      displayPts += 2;
-      if (p.gameStats) p.gameStats.vpFromOther = (p.gameStats.vpFromOther || 0) + 2;
-      game.logs.push(`🍖 ${p.name} gained 2 extra VP from Omnivore!`);
+    const oldVp = displayPts;
+    const ctx = createEventContext(game, p.id);
+    for (const b of getBehaviors(p)) {
+      if (b?.onBeforeScoreVP) displayPts = b.onBeforeScoreVP(ctx, displayPts);
     }
-    if (p.cards.some(c => c.effect?.gourmet)) {
-      const counts: Record<string, number> = { '1': 0, '2': 0, '3': 0, 'Heart': 0, 'Lightning': 0, 'Claw': 0 };
-      game.currentDice.forEach(r => counts[r.face]++);
-      if (counts['1'] >= 3) {
-        displayPts += 1;
-        if (p.gameStats) p.gameStats.vpFromOther = (p.gameStats.vpFromOther || 0) + 1;
-        game.logs.push(`🍽️ ${p.name} gained 1 extra VP from Gourmet!`);
-      }
+    if (displayPts > oldVp && p.gameStats) {
+      p.gameStats.vpFromOther = (p.gameStats.vpFromOther || 0) + (displayPts - oldVp);
     }
     p.victoryPoints = Math.min(game.settings?.winningVP || 20, p.victoryPoints + displayPts);
     if (p.gameStats) p.gameStats.vpFromDice = (p.gameStats.vpFromDice || 0) + results.points;
@@ -228,13 +231,9 @@ export async function resolveDiceAutomatically(gameId: string, playerId: string)
 
   // Phase 2: Energy
   if (results.energy > 0) {
-    if (p.cards.some(c => c.effect?.energyHoarder)) {
-      results.energy += 1;
-      game.logs.push(`${p.name} gained +1 extra ⚡ from Energy Hoarder!`);
-    }
-    if (p.cards.some(c => c.effect?.friendOfChildren)) {
-      results.energy += 1;
-      game.logs.push(`${p.name} gained +1 extra ⚡ from Friend of Children!`);
+    const ctx = createEventContext(game, p.id);
+    for (const b of getBehaviors(p)) {
+      if (b?.onBeforeGainEnergy) results.energy = b.onBeforeGainEnergy(ctx, results.energy);
     }
     p.energy += results.energy;
     if (p.gameStats) p.gameStats.energyGained += results.energy;
@@ -259,9 +258,9 @@ export async function resolveDiceAutomatically(gameId: string, playerId: string)
     
     let actualHeal = 0;
     if (healsRemaining > 0 && !p.inTokyo) {
-      if (p.cards.some(c => c.effect?.regeneration)) {
-        healsRemaining += 1;
-        game.logs.push(`${p.name} heals +1 extra ❤️ from Regeneration!`);
+      const ctx = createEventContext(game, p.id);
+    for (const b of getBehaviors(p)) {
+        if (b?.onBeforeHeal) healsRemaining = b.onBeforeHeal(ctx, healsRemaining);
       }
       actualHeal = Math.min((p.maxHealth || game.settings?.maxHealth || 10) - p.health, healsRemaining);
       if (actualHeal > 0) {
@@ -280,21 +279,8 @@ export async function resolveDiceAutomatically(gameId: string, playerId: string)
   }
   
   // Phase 4: Attack
-  const hasNovaBreath = p.cards.some(c => c.effect?.aoeAttack);
-  const hasPoisonSpit = p.cards.some(c => c.effect?.poison);
-  const hasFireBreathing = p.cards.some(c => c.effect?.fireBreathing);
+  const ctx = createEventContext(game, p.id);
   
-  const aliveOrder = game.playerOrder.filter(id => game.players[id] && game.players[id].health > 0);
-  const aliveIndex = aliveOrder.indexOf(p.id);
-  let neighbors: string[] = [];
-  if (aliveOrder.length > 2) {
-    const prevId = aliveOrder[(aliveIndex - 1 + aliveOrder.length) % aliveOrder.length];
-    const nextId = aliveOrder[(aliveIndex + 1) % aliveOrder.length];
-    neighbors = [prevId, nextId];
-  } else if (aliveOrder.length === 2) {
-    neighbors = [aliveOrder.find(id => id !== p.id)!];
-  }
-
   if (results.attack > 0) {
     game.highlightedDice = game.currentDice.filter(d => d.face === 'Claw').map(d => d.id);
     game.highlightedStats = [];
@@ -305,81 +291,56 @@ export async function resolveDiceAutomatically(gameId: string, playerId: string)
     const modifierLogs: string[] = [];
     const targetNames: string[] = [];
 
+    let currentTargets: string[] = [];
     Object.values(game.players).forEach(other => {
       if (other.id === p.id) return;
-      if (other.health <= 0) return; // Ignore dead players
-      
-      const isTarget = (p.inTokyo && !other.inTokyo) || 
-                       (!p.inTokyo && other.inTokyo) || 
-                       hasNovaBreath;
+      if (other.health <= 0) return;
+      if ((p.inTokyo && !other.inTokyo) || (!p.inTokyo && other.inTokyo)) {
+        currentTargets.push(other.id);
+      }
+    });
 
-      if (isTarget) {
+    for (const b of getBehaviors(p)) {
+      if (b?.onDetermineAttackTargets) currentTargets = b.onDetermineAttackTargets(ctx, currentTargets);
+    }
+
+    let baseDmg = results.attack;
+    for (const b of getBehaviors(p)) {
+      if (b?.onAttackOut) baseDmg = b.onAttackOut(ctx, baseDmg);
+    }
+
+    Object.values(game.players).forEach(other => {
+      if (currentTargets.includes(other.id)) {
         targetNames.push(other.name);
-        const armor = other.cards.reduce((sum: number, c: any) => sum + (c.effect?.armor || 0), 0);
-        let dmg = results.attack;
         
-        let extraFireDamage = 0;
-        if (hasFireBreathing && neighbors.includes(other.id)) {
-          dmg += 1;
-          extraFireDamage = 1;
-        }
-        if (p.cards.some(c => c.effect?.urbavore) && p.inTokyo) {
-          dmg += 1;
+        let dmg = baseDmg;
+        for (const b of getBehaviors(p)) {
+          if (b?.onAttackTargeted) dmg = b.onAttackTargeted(ctx, other.id, dmg);
         }
         
-        const evadeIdx = other.cards.findIndex((c: Card) => c.effect?.evade);
-        if (evadeIdx !== -1 && dmg > 0) {
-          other.cards.splice(evadeIdx, 1);
-          dmg = 0;
-          modifierLogs.push(`💨 ${other.name} Evaded the attack!`);
+        const otherCtx = createEventContext(game, other.id);
+        
+        for (const b of getBehaviors(other)) {
+          if (b?.onBeforeDamageTaken) dmg = b.onBeforeDamageTaken(otherCtx, dmg, p.id);
         }
-        let actualDmg = Math.max(0, dmg - armor);
+
+        let actualDmg = Math.max(0, dmg);
         if (actualDmg > 0) {
           (p as any).dealtDamageThisTurn = true;
-          if (p.cards.some(c => c.effect?.poisonQuills)) {
-            other.energy = Math.max(0, other.energy - 1);
-            modifierLogs.push(`🪶 ${other.name} lost 1 ⚡ from Poison Quills!`);
-          }
-          if (other.cards.some(c => c.effect?.spikedArmor)) {
-            p.health = Math.max(0, p.health - 1);
-            modifierLogs.push(`🛡️ ${p.name} took 1 damage from ${other.name}'s Spiked Armor!`);
-            game.highlightedStats.push({ playerId: p.id, stat: 'health' });
-            if (p.health <= 0) {
-              game.logs.push(`💀 ${p.name} was killed by Spiked Armor!`);
-              if (p.gameStats) p.gameStats.turnDied = game.history && game.history.length > 0 ? game.history[game.history.length - 1].turnNumber : 0;
-            }
-          }
+          
           other.health -= actualDmg;
           if (p.gameStats) {
             p.gameStats.damageDealt += actualDmg;
           }
           game.highlightedStats.push({ playerId: other.id, stat: 'health' });
           hitSomeone = true;
-          
-          if (p.cards.some(c => c.effect?.shrinkRay)) {
-            other.shrinkTokens = Math.min(1, (other.shrinkTokens || 0) + 1);
-            modifierLogs.push(`🎲🚫 ${other.name} was shrunk!`);
-          }
-          if (p.cards.some(c => c.effect?.parasitic)) {
-            const actualHeal = Math.min(p.maxHealth || game.settings?.maxHealth || 10, p.health + 1) - p.health;
-            if (actualHeal > 0) {
-              p.health += actualHeal;
-              modifierLogs.push(`🦑 ${p.name} healed 1 ❤️ from Parasitic Tentacles!`);
-              game.highlightedStats.push({ playerId: p.id, stat: 'health' });
-            }
-          }
 
-          
-          if (extraFireDamage > 0) {
-            modifierLogs.push(`🔥 ${other.name} took +1 extra damage from Fire Breathing!`);
-          }
-          if (armor > 0 && dmg > 0) {
-             modifierLogs.push(`🛡️ ${other.name}'s Armor blocked ${Math.min(dmg, armor)} damage!`);
+          for (const b of getBehaviors(p)) {
+            if (b?.onDamageDealt) b.onDamageDealt(ctx, actualDmg, other.id);
           }
           
-          if (hasPoisonSpit) {
-            other.poisonTokens = (other.poisonTokens || 0) + 1;
-            modifierLogs.push(`☠️ ${other.name} was poisoned!`);
+          for (const b of getBehaviors(other)) {
+            if (b?.onDamageTaken) b.onDamageTaken(otherCtx, actualDmg, p.id);
           }
           
           if (other.health <= 0) {
@@ -391,8 +352,6 @@ export async function resolveDiceAutomatically(gameId: string, playerId: string)
               other.gameStats.turnDied = game.history && game.history.length > 0 ? game.history[game.history.length - 1].turnNumber : 0;
             }
           }
-        } else if (armor > 0 && dmg > 0) {
-           modifierLogs.push(`🛡️ ${other.name}'s Armor completely blocked the attack!`);
         }
         
         if (other.inTokyo && actualDmg > 0) {
@@ -404,17 +363,12 @@ export async function resolveDiceAutomatically(gameId: string, playerId: string)
 
     if (hitSomeone || modifierLogs.length > 0 || targetNames.length > 0) {
       const targetsStr = targetNames.length > 0 ? targetNames.join(', ') : 'no one';
-      if (p.cards.some(c => c.effect?.alphaMonster)) {
-        p.victoryPoints = Math.min(game.settings?.winningVP || 20, p.victoryPoints + 1);
-        if (p.gameStats) p.gameStats.vpFromOther = (p.gameStats.vpFromOther || 0) + 1;
-        modifierLogs.push(`🐺 ${p.name} gained 1 ⭐ from Alpha Monster!`);
-        game.highlightedStats.push({ playerId: p.id, stat: 'vp' });
+      
+      for (const b of getBehaviors(p)) {
+        if (b?.onAttackResolved) b.onAttackResolved(ctx, hitSomeone);
       }
-      if (hasNovaBreath) {
-        game.logs.push(`🌊 ${p.name} dealt ${results.attack} 💥 damage to ALL other players (${targetsStr})! (Nova Breath)`);
-      } else {
-        game.logs.push(`${p.name} dealt ${results.attack} 💥 damage to ${targetsStr}!`);
-      }
+      
+      game.logs.push(`${p.name} dealt ${results.attack} 💥 damage to ${targetsStr}!`);
       game.logs.push(...modifierLogs);
     }
 
@@ -431,11 +385,12 @@ export async function resolveDiceAutomatically(gameId: string, playerId: string)
         game.pendingYields = [];
         if (yielded) {
           playerInTokyo.inTokyo = false;
-          if (playerInTokyo.cards.some((c: any) => c.effect?.jetpack)) {
-            playerInTokyo.energy += 2;
-            if (playerInTokyo.gameStats) playerInTokyo.gameStats.energyGained += 2;
-            game.logs.push(`🚀 ${playerInTokyo.name} gained 2 ⚡ from Jetpack for yielding Tokyo!`);
+          
+          const yieldCtx = createEventContext(game, playerInTokyo.id);
+          for (const b of getBehaviors(playerInTokyo)) {
+            if (b?.onYieldTokyo) b.onYieldTokyo(yieldCtx);
           }
+          
           game.logs.push(`${playerInTokyo.name} yielded Tokyo!`);
           hitTokyoPlayer = false; // Tokyo is empty now
         } else {
@@ -445,11 +400,12 @@ export async function resolveDiceAutomatically(gameId: string, playerId: string)
         const yielded = Math.random() > 0.5;
         if (yielded) {
           playerInTokyo.inTokyo = false;
-          if (playerInTokyo.cards.some((c: any) => c.effect?.jetpack)) {
-            playerInTokyo.energy += 2;
-            if (playerInTokyo.gameStats) playerInTokyo.gameStats.energyGained += 2;
-            game.logs.push(`🚀 ${playerInTokyo.name} gained 2 ⚡ from Jetpack for yielding Tokyo!`);
+          
+          const yieldCtx = createEventContext(game, playerInTokyo.id);
+          for (const b of getBehaviors(playerInTokyo)) {
+            if (b?.onYieldTokyo) b.onYieldTokyo(yieldCtx);
           }
+          
           game.logs.push(`${playerInTokyo.name} yielded Tokyo!`);
           hitTokyoPlayer = false;
           if (!(game as any).botsMuted) {
@@ -468,13 +424,14 @@ export async function resolveDiceAutomatically(gameId: string, playerId: string)
       if (isTokyoEmpty) {
         p.inTokyo = true;
         let enterVp = 1;
-        if (p.cards.some(c => c.effect?.urbavore)) {
-          enterVp += 1;
-        }
         p.victoryPoints = Math.min(20, p.victoryPoints + enterVp);
         if (p.gameStats) p.gameStats.vpFromEnteringTokyo = (p.gameStats.vpFromEnteringTokyo || 0) + enterVp;
         game.logs.push(`👑 ${p.name} entered Tokyo City! (+${enterVp} VP)`);
         game.highlightedStats.push({ playerId: p.id, stat: 'vp' });
+        
+        for (const b of getBehaviors(p)) {
+          if (b?.onEnterTokyo) b.onEnterTokyo(ctx);
+        }
       }
     }
     
@@ -731,19 +688,25 @@ export async function rollDiceAction(gameId: string, playerId: string) {
       // Get `rollDice` from gameLogic, we need to import it if not already
       
       if (game.currentDice.length === 0) {
-        const extraDice = game.players[playerId].cards.reduce((sum: number, c: Card) => sum + (c.effect?.extraDie || 0), 0);
-        const shrink = game.players[playerId].shrinkTokens || 0;
         const base = game.settings?.startingDice || 6;
-        const numDice = Math.max(1, base + extraDice - shrink);
+        let numDice = base;
+        const ctx = createEventContext(game, playerId);
+        for (const b of getBehaviors(game.players[playerId])) {
+          if (b?.onDetermineDiceCount) numDice = b.onDetermineDiceCount(ctx, numDice);
+        }
+        numDice = Math.max(1, numDice);
         game.currentDice = rollDice(numDice);
       } else {
         game.currentDice = game.currentDice.map(d => d.kept ? d : rollDice(1)[0]);
       }
       
       if (game.rollsLeft === 0) {
+        game.isAnimating = true;
+      }
+      
+      await saveGame(gameId, game);
+      if (game.rollsLeft === 0) {
         resolveDiceAutomatically(gameId, playerId);
-      } else {
-        await saveGame(gameId, game);
       }
     }
 
@@ -792,7 +755,12 @@ export async function buyCard(gameId: string, cardId: string, playerId: string) 
       const cardIndex = game.marketCards.findIndex(c => c.id === cardId);
       if (cardIndex !== -1) {
         const card = game.marketCards[cardIndex];
-        const cost = player.cards.some(c => c.effect?.alienMetabolism) ? Math.max(0, card.cost - 1) : card.cost;
+        let cost = card.cost;
+        const ctx = createEventContext(game, playerId);
+        for (const b of getBehaviors(player)) {
+          if (b?.onBeforeBuyCard) cost = b.onBeforeBuyCard(ctx, cost);
+        }
+        cost = Math.max(0, cost);
         if (player.energy >= cost) {
           player.energy -= cost;
           if (player.gameStats) {
@@ -806,96 +774,15 @@ export async function buyCard(gameId: string, cardId: string, playerId: string) 
           
           game.logs.push(`BUY_CARD:${player.name}:${JSON.stringify(card)}`);
           game.isAnimating = true;
-          game.highlightedStats = [];
-          if (player.cards.some(c => c.effect?.newsTeam)) {
-            player.victoryPoints = Math.min(game.settings?.winningVP || 20, player.victoryPoints + 1);
-            if (player.gameStats) player.gameStats.vpFromOther = (player.gameStats.vpFromOther || 0) + 1;
-            game.logs.push(`📰 ${player.name} gained 1 VP from Dedicated News Team!`);
-            game.highlightedStats.push({ playerId: player.id, stat: 'vp' });
-          }
-          if (card.effect?.evacuation) {
-            Object.values(game.players).forEach(other => {
-              if (other.id !== player.id) {
-                other.victoryPoints = Math.max(0, other.victoryPoints - 5);
-                game.highlightedStats.push({ playerId: other.id, stat: 'vp' });
-              }
-            });
-            game.logs.push(`🚨 All other players lost 5 VP from Evacuation Orders!`);
-          }
-          if (card.effect?.spikeDamage) {
-            const dmg = card.effect.spikeDamage;
-            if (dmg > 0) {
-              Object.values(game.players).forEach(other => {
-                if (other.id !== player.id && other.health > 0) {
-                  const armor = other.cards.reduce((sum, c) => sum + (c.effect?.armor || 0), 0);
-                  const evadeIdx = other.cards.findIndex((c: Card) => c.effect?.evade);
-                  if (evadeIdx !== -1) {
-                    other.cards.splice(evadeIdx, 1);
-                    game.logs.push(`💨 ${other.name} Evaded the spike damage!`);
-                    return;
-                  }
-                  const actualDmg = Math.max(0, dmg - armor);
-                  if (actualDmg > 0) {
-                    other.health -= actualDmg;
-                    game.highlightedStats.push({ playerId: other.id, stat: 'health' });
-                    if (other.health <= 0) {
-                      game.logs.push(`💀 ${other.name} was killed by ${card.name}!`);
-                      if (other.gameStats) other.gameStats.turnDied = game.history && game.history.length > 0 ? game.history[game.history.length - 1].turnNumber : 0;
-                    }
-                  }
-                }
-              });
-            }
-          }
-          if (card.effect?.highAltitude) {
-            const dmg = 3;
-            Object.values(game.players).forEach(other => {
-              if (other.health > 0) {
-                const armor = other.cards.reduce((sum, c) => sum + (c.effect?.armor || 0), 0);
-                const evadeIdx = other.cards.findIndex((c: Card) => c.effect?.evade);
-                if (evadeIdx !== -1) {
-                  other.cards.splice(evadeIdx, 1);
-                  game.logs.push(`💨 ${other.name} Evaded High Altitude Bombing!`);
-                  return;
-                }
-                const actualDmg = Math.max(0, dmg - armor);
-                if (actualDmg > 0) {
-                  other.health -= actualDmg;
-                  game.highlightedStats.push({ playerId: other.id, stat: 'health' });
-                  if (other.health <= 0) {
-                    game.logs.push(`💀 ${other.name} was killed by High Altitude Bombing!`);
-                    if (other.gameStats) other.gameStats.turnDied = game.history && game.history.length > 0 ? game.history[game.history.length - 1].turnNumber : 0;
-                  }
-                }
-              }
-            });
+          game.highlightedStats = [{ playerId: player.id, stat: 'energy' }];
+          
+          for (const b of getBehaviors(player)) {
+            if (b?.onBuyCard) b.onBuyCard(ctx, cost);
           }
           
-          if (card.effect?.maxHealth) {
-            player.maxHealth = (player.maxHealth || 10) + card.effect.maxHealth;
-            game.logs.push(`${player.name} max health increased by ${card.effect.maxHealth}.`);
-            game.highlightedStats.push({ playerId: player.id, stat: 'health' });
-          }
-          if (card.effect?.heal) {
-            const actualHeal = Math.min(player.maxHealth || game.settings?.maxHealth || 10, player.health + card.effect.heal) - player.health;
-            player.health += actualHeal;
-            if (actualHeal > 0) {
-              game.logs.push(`${player.name} healed ${actualHeal} ❤️.`);
-              game.highlightedStats.push({ playerId: player.id, stat: 'health' });
-            }
-          }
-          if (card.effect?.energy) {
-            player.energy += card.effect.energy;
-            game.logs.push(`${player.name} gained ${card.effect.energy} ⚡.`);
-            game.highlightedStats.push({ playerId: player.id, stat: 'energy' });
-          }
-          if (card.effect?.vp) {
-            const actualVp = Math.min(20, player.victoryPoints + card.effect.vp) - player.victoryPoints;
-            player.victoryPoints += actualVp;
-            if (actualVp > 0) {
-              game.logs.push(`${player.name} gained ${actualVp} VP.`);
-              game.highlightedStats.push({ playerId: player.id, stat: 'vp' });
-            }
+          const cardBehavior = CardRegistry[card.id];
+          if (cardBehavior?.onBuy) {
+            cardBehavior.onBuy(ctx);
           }
           
           if (game.deck.length > 0) {
@@ -933,6 +820,7 @@ export async function sweepCards(gameId: string, playerId: string) {
         player.energy -= 2;
         game.logs.push(`${player.name} paid 2 ⚡ to sweep the cards.`);
         game.isAnimating = true;
+        game.highlightedStats = [{ playerId: player.id, stat: 'energy' }];
 
         let i = 0;
         while (i < game.marketCards.length) {

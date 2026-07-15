@@ -5,7 +5,7 @@ const firebaseConfig = {
   projectId: "acquire-game-1782999027",
   appId: "1:13397046224:web:cde4c3a9637972f464ffd5",
   storageBucket: "acquire-game-1782999027.firebasestorage.app",
-  apiKey: "AIzaSyASeI7sudOZKb_jQnYGadix57m02STFUEo",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: "acquire-game-1782999027.firebaseapp.com",
   messagingSenderId: "13397046224"
 };

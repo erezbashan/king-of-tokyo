@@ -10,6 +10,7 @@ export interface Player {
   victoryPoints: number; // max 20
   energy: number;
   inTokyo: boolean;
+  inTokyoBay?: boolean;
   cards: Card[];
   hasYielded?: boolean; // temporary flag during resolution
   poisonTokens: number;
@@ -102,7 +103,9 @@ export interface TurnHistory {
   vp: number;
   health: number;
   energy: number;
-  tokyoPlayerId?: string | null;
+  inTokyo?: boolean;
+  inTokyoBay?: boolean;
+  tokyoPlayerId?: string | null; // Keep for backwards compatibility with old games
 }
 
 export interface GameState {
@@ -123,10 +126,12 @@ export interface GameState {
   // Animation state
   isAnimating: boolean;
   highlightedDice: string[];
-  highlightedStats: { playerId: PlayerId, stat: 'health' | 'energy' | 'vp' }[];
+  highlightedStats: { playerId: PlayerId, stat: string }[];
   
   // Resolution state
   pendingYields: PlayerId[]; // players asked if they want to yield Tokyo
+  pendingWings?: PlayerId[]; // players asked if they want to spend 2 energy to ignore damage
+  playerDecisions?: Record<PlayerId, { type: 'Yield' | 'Wings', choice: boolean }>;
   logs: string[];
   chatMessages?: { sender: string, text: string }[];
   history?: TurnHistory[];
@@ -167,6 +172,9 @@ export const SOCKET_EVENTS = {
   GAMES_LIST: 'GAMES_LIST',
 };
 
+export * from './cards/types';
+export * from './cards/index';
+
 export const marketCards: Card[] = [
   { id: 'c1', name: 'Even Bigger', cost: 4, type: 'Keep', description: '+2 Max Health (and +2 Health)', effect: { maxHealth: 2, heal: 2 } },
   { id: 'c2', name: 'Nova Breath', cost: 7, type: 'Keep', description: 'Your attacks damage ALL other players', effect: { aoeAttack: true } },
@@ -190,7 +198,7 @@ export const marketCards: Card[] = [
   { id: 'c20', name: 'Alpha Monster', cost: 6, type: 'Keep', description: 'Gain 1 VP every time you deal damage.', effect: { alphaMonster: true } },
   { id: 'c21', name: 'Alien Metabolism', cost: 3, type: 'Keep', description: 'Buying cards costs 1 less energy.', effect: { alienMetabolism: true } },
   { id: 'c22', name: 'Giant Brain', cost: 5, type: 'Keep', description: 'Get 1 extra reroll per turn.', effect: { giantBrain: true } },
-  { id: 'c23', name: 'Omnivore', cost: 4, type: 'Keep', description: 'Once per turn, if you score points from dice, gain 2 extra VP.', effect: { omnivore: true } },
+  { id: 'c23', name: 'Omnivore', cost: 4, type: 'Keep', description: 'Once per turn, score 2 VP if your dice contain at least a 1, a 2, and a 3.', effect: { omnivore: true } },
   { id: 'c24', name: 'Poison Quills', cost: 3, type: 'Keep', description: 'When you deal damage, the target loses 1 energy.', effect: { poisonQuills: true } },
   { id: 'c25', name: 'Dedicated News Team', cost: 3, type: 'Keep', description: 'Gain 1 VP whenever you buy a card.', effect: { newsTeam: true } },
   { id: 'c26', name: 'Herbivore', cost: 5, type: 'Keep', description: 'If you deal 0 damage on your turn, gain 1 VP.', effect: { herbivore: true } },
@@ -217,3 +225,4 @@ export const marketCards: Card[] = [
   { id: 'c46', name: 'Urbavore', cost: 4, type: 'Keep', description: 'Gain 1 extra VP when starting turn in Tokyo. Deal 1 extra damage from Tokyo.', effect: { urbavore: true } },
   { id: 'c47', name: 'Vast Storm', cost: 6, type: 'Discard', description: 'Gain 2 VP. Deal 2 damage to all others.', effect: { vp: 2, spikeDamage: 2 } }
 ];
+export * from './cards/index';

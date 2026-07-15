@@ -7,15 +7,11 @@ interface Props {
   onClose: () => void;
 }
 
-
 const CustomDot = (props: any) => {
-  const { cx, cy, payload, dataKey, playerId, gameState } = props;
-  const val = payload[dataKey];
-  if (val === undefined || val === null) return null;
+  const { cx, cy, payload, playerId, gameState } = props;
   const p = gameState.players[playerId];
-  
-  const isDeathPoint = p && p.health <= 0 && p.gameStats?.turnDied && payload.name === `Turn ${p.gameStats.turnDied + 1}`;
-  
+  if (!p || p.health > 0) return null;
+  const isDeathPoint = p.gameStats?.turnDied && payload.name === `Turn ${p.gameStats.turnDied + 1}`;
   if (isDeathPoint) {
     return (
       <text x={cx} y={cy} dy={5} dx={-8} fill="white" fontSize="16px" style={{ zIndex: 10 }}>
@@ -25,6 +21,9 @@ const CustomDot = (props: any) => {
   }
   return null;
 };
+
+
+
 
 export function GameOverScreen({ gameState, onClose }: Props) {
   const winner = gameState.winner ? gameState.players[gameState.winner] : null;
@@ -65,7 +64,7 @@ export function GameOverScreen({ gameState, onClose }: Props) {
   if (gameState.history) {
     const turns = Array.from(new Set(gameState.history.map(h => h.turnNumber))).sort((a,b)=>a-b);
     for (const turn of turns) {
-      const turnData: any = { name: `Turn ${turn}` };
+      const turnData: any = { name: `Turn ${turn}`, turnNumber: turn };
       for (const id of playerIds) {
         const p = gameState.players[id];
         // Graph Truncation: don't plot points past the turn they died
@@ -80,6 +79,11 @@ export function GameOverScreen({ gameState, onClose }: Props) {
         }
       }
       chartData.push(turnData);
+    }
+    // Recharts requires at least 2 points to draw a line. 
+    // If the game ended on turn 1 (or history was lost), duplicate the point.
+    if (chartData.length === 1) {
+      chartData.push({ ...chartData[0], name: 'End' });
     }
   }
 
@@ -104,41 +108,42 @@ export function GameOverScreen({ gameState, onClose }: Props) {
         {/* Stats Table */}
         <div style={{ marginTop: '40px', background: 'rgba(0,0,0,0.5)', padding: '16px', borderRadius: '8px' }}>
           <h3 style={{ marginBottom: '16px' }}>Game Summary</h3>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', marginBottom: '16px' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', marginBottom: '16px', overflowX: 'auto', display: 'block' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #555' }}>
-                <th style={{ padding: '8px' }}>Player</th>
-                
-                <th style={{ padding: '8px', textAlign: 'right' }}>Total Damage Dealt</th>
-                <th style={{ padding: '8px', textAlign: 'right' }}>Players Killed</th>
-                <th style={{ padding: '8px', textAlign: 'right' }}>Cards Bought</th>
-                <th style={{ padding: '8px', textAlign: 'right' }}>Energy Spent</th>
-                <th style={{ padding: '8px', textAlign: 'right' }}>Energy Gained</th>
-                <th style={{ padding: '8px', textAlign: 'right' }}>Total Healing</th>
-                <th style={{ padding: '8px', textAlign: 'right' }}>Times Entered Tokyo</th>
-                <th style={{ padding: '8px', textAlign: 'right' }}>Times Started in Tokyo</th>
+                <th style={{ padding: '8px', minWidth: '160px' }}>Stat</th>
+                {playerIds.map(id => (
+                  <th key={id} style={{ padding: '8px', textAlign: 'right', color: gameState.players[id].color || 'white', minWidth: '80px' }}>
+                    {gameState.players[id].name}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {playerIds.map(id => {
-                const p = gameState.players[id];
-                return (
-                  <tr key={id} style={{ borderBottom: '1px solid #444', color: p.color || 'white' }}>
-                    <td style={{ padding: '8px', fontWeight: 'bold' }}>{p.name}</td>
-                    
-                    <td style={{ padding: '8px', textAlign: 'right' }}>{p.gameStats?.damageDealt || 0}</td>
-                    <td style={{ padding: '8px', textAlign: 'right' }}>{p.gameStats?.playersKilled || 0}</td>
-                    <td style={{ padding: '8px', textAlign: 'right' }}>{p.gameStats?.cardsBought || 0}</td>
-                    <td style={{ padding: '8px', textAlign: 'right' }}>{p.gameStats?.energySpent || 0}</td>
-                    <td style={{ padding: '8px', textAlign: 'right' }}>{p.gameStats?.energyGained || 0}</td>
-                    <td style={{ padding: '8px', textAlign: 'right' }}>{p.gameStats?.healingGained || 0}</td>
-                    <td style={{ padding: '8px', textAlign: 'right' }}>{p.gameStats?.vpFromDice || 0}</td>
-                    <td style={{ padding: '8px', textAlign: 'right' }}>{p.gameStats?.vpFromEnteringTokyo || 0}</td>
-                    <td style={{ padding: '8px', textAlign: 'right' }}>{p.gameStats?.vpFromStartingTokyo || 0}</td>
-                    <td style={{ padding: '8px', textAlign: 'right' }}>{p.gameStats?.vpFromOther || 0}</td>
-                  </tr>
-                );
-              })}
+              {[
+                { label: 'Total Damage Dealt', key: 'damageDealt' },
+                { label: 'Players Killed', key: 'playersKilled' },
+                { label: 'Cards Bought', key: 'cardsBought' },
+                { label: 'Energy Spent', key: 'energySpent' },
+                { label: 'Total Healing', key: 'healingGained' },
+                { label: 'VP From Dice', key: 'vpFromDice' },
+                { label: 'VP From Cards', key: 'vpFromOther' },
+                { label: 'VP From Entering Tokyo', key: 'vpFromEnteringTokyo' },
+                { label: 'VP From Starting Tokyo', key: 'vpFromStartingTokyo' },
+              ].map((row, idx) => (
+                <tr key={idx} style={{ borderBottom: '1px solid #444' }}>
+                  <td style={{ padding: '8px', fontWeight: 'bold' }}>{row.label}</td>
+                  {playerIds.map(id => {
+                    const p = gameState.players[id];
+                    const val = (p.gameStats as any)?.[row.key] || 0;
+                    return (
+                      <td key={id} style={{ padding: '8px', textAlign: 'right', color: p.color || 'white' }}>
+                        {val}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -146,11 +151,11 @@ export function GameOverScreen({ gameState, onClose }: Props) {
         {chartData.length > 0 && (
           <div style={{ marginTop: '24px', background: 'rgba(0,0,0,0.5)', padding: '16px', borderRadius: '8px' }}>
             <h3 style={{ marginBottom: '16px' }}>Game Progress</h3>
-            <h4 style={{ textAlign: 'left', margin: '24px 0 8px 0' }}>Who was in Tokyo?</h4>
-            <div style={{ display: 'flex', width: '100%', height: '40px', borderRadius: '4px', overflow: 'hidden', backgroundColor: 'rgba(0,0,0,0.3)', border: '1px solid #555', marginBottom: '24px' }}>
+            <h4 style={{ textAlign: 'left', margin: '24px 0 8px 65px' }}>Who was in Tokyo City?</h4>
+            <div style={{ display: 'flex', margin: '0 5px 24px 65px', height: '30px', borderRadius: '4px', overflow: 'hidden', backgroundColor: 'transparent', border: '1px solid #555' }}>
               {chartData.map((d) => {
                 const historyForTurn = gameState.history?.filter(h => h.turnNumber === d.turnNumber) || [];
-                const tokyoPlayerHistory = historyForTurn.find(h => (h as any).inTokyo);
+                const tokyoPlayerHistory = historyForTurn.find(h => h.inTokyo && !h.inTokyoBay);
                 const tokyoPlayerId = historyForTurn.length > 0 && historyForTurn[0].tokyoPlayerId ? historyForTurn[0].tokyoPlayerId : (tokyoPlayerHistory ? tokyoPlayerHistory.playerId : null);
                 const player = tokyoPlayerId ? gameState.players[tokyoPlayerId] : null;
                 const color = player ? (player.color || '#888') : 'transparent';
@@ -164,6 +169,28 @@ export function GameOverScreen({ gameState, onClose }: Props) {
                 );
               })}
             </div>
+
+            {playerIds.length >= 5 && gameState.history?.some(h => h.inTokyoBay) && (
+              <>
+                <h4 style={{ textAlign: 'left', margin: '0px 0 8px 65px' }}>Who was in Tokyo Bay?</h4>
+            <div style={{ display: 'flex', margin: '0 5px 24px 65px', height: '30px', borderRadius: '4px', overflow: 'hidden', backgroundColor: 'transparent', border: '1px solid #555' }}>
+                  {chartData.map((d) => {
+                    const historyForTurn = gameState.history?.filter(h => h.turnNumber === d.turnNumber) || [];
+                    const tokyoBayHistory = historyForTurn.find(h => h.inTokyo && h.inTokyoBay);
+                    const player = tokyoBayHistory ? gameState.players[tokyoBayHistory.playerId] : null;
+                    const color = player ? (player.color || '#888') : 'transparent';
+                    const name = player ? player.name : '';
+                    return (
+                      <div 
+                        key={d.turnNumber} 
+                        style={{ flex: 1, backgroundColor: color, borderRight: '1px solid rgba(255,255,255,0.1)', cursor: 'crosshair' }}
+                        title={`Turn ${d.turnNumber}: ${name || 'Empty'}`}
+                      />
+                    );
+                  })}
+                </div>
+              </>
+            )}
             
             <h4 style={{ textAlign: 'left', margin: '8px 0' }}>Victory Points</h4>
             <ResponsiveContainer width="100%" height={250}>
@@ -173,7 +200,7 @@ export function GameOverScreen({ gameState, onClose }: Props) {
                 <YAxis stroke="#ccc" domain={[0, 20]} />
                 
                 {playerIds.map(id => (
-                  <Line key={id} type="monotone" dataKey={`${gameState.players[id].name} VP`} stroke={gameState.players[id]?.color || '#8884d8'} strokeWidth={3} dot={<CustomDot playerId={id} gameState={gameState} />} />
+                  <Line key={id} type="monotone" dataKey={`${gameState.players[id].name} VP`} stroke={gameState.players[id]?.color || '#8884d8'} strokeWidth={3} dot={<CustomDot playerId={id} gameState={gameState} />} activeDot={false} />
                 ))}
               </LineChart>
             </ResponsiveContainer>
@@ -185,7 +212,7 @@ export function GameOverScreen({ gameState, onClose }: Props) {
                 <XAxis dataKey="name" stroke="#ccc" tick={false} />
                 <YAxis stroke="#ccc" domain={[0, 12]} />
                 {playerIds.map(id => (
-                  <Line key={id} type="monotone" dataKey={`${gameState.players[id].name} Health`} stroke={gameState.players[id]?.color || '#8884d8'} strokeWidth={3} dot={<CustomDot playerId={id} gameState={gameState} />} />
+                  <Line key={id} type="monotone" dataKey={`${gameState.players[id].name} Health`} stroke={gameState.players[id]?.color || '#8884d8'} strokeWidth={3} dot={<CustomDot playerId={id} gameState={gameState} />} activeDot={false} />
                 ))}
               </LineChart>
             </ResponsiveContainer>
