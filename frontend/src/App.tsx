@@ -80,16 +80,28 @@ const renderLogLine = (log: string, i: number, gameState: any, setSelectedCard: 
         const renderText = (logText: string): any[] => {
           let elements: any[] = [logText];
 
-          // Handle Energy
-          elements = elements.flatMap((el) => {
-            if (typeof el !== 'string') return [el];
-            const parts = el.split('⚡');
-            return parts.flatMap((p, idx) => {
-              const res: any[] = [p];
-              if (idx < parts.length - 1) res.push(<span key={i + idx + 'energy'} className="energy-icon">⚡</span>);
-              return res;
+          // Handle Energy and Dice numbers
+          const symbols: Record<string, any> = {
+            '⚡': <span key="energy" className="energy-icon">⚡</span>,
+            '1️⃣': <span key="d1" className="dice-number" style={{ color: '#00ff88' }}>1</span>,
+            '2️⃣': <span key="d2" className="dice-number" style={{ color: '#00ff88' }}>2</span>,
+            '3️⃣': <span key="d3" className="dice-number" style={{ color: '#00ff88' }}>3</span>,
+          };
+
+          for (const [sym, elNode] of Object.entries(symbols)) {
+            elements = elements.flatMap((el) => {
+              if (typeof el !== 'string') return [el];
+              const parts = el.split(sym);
+              return parts.flatMap((p, idx) => {
+                const res: any[] = [p];
+                if (idx < parts.length - 1) {
+                  // Clone element with unique key
+                  res.push({...elNode, key: `${i}-${idx}-${sym}`});
+                }
+                return res;
+              });
             });
-          });
+          }
 
           // Handle Players
           for (const p of sortedPlayers as any[]) {
@@ -406,17 +418,15 @@ function App() {
                             {die.kept && <div style={{ position: 'absolute', top: -6, right: -6, fontSize: '14px', background: 'rgba(0,0,0,0.8)', borderRadius: '50%', padding: '2px 4px', boxShadow: '0 0 5px rgba(0,0,0,0.5)' }}>🔒</div>}
                             <span style={{ fontSize: '24px' }}>
                               {(() => {
-                                const faceIcons: Record<string, string> = {
-                                  '1': '1️⃣',
-                                  '2': '2️⃣',
-                                  '3': '3️⃣',
+                                const faceIcons: Record<string, any> = {
+                                  '1': <span className="dice-number" style={{ color: '#00ff88' }}>1</span>,
+                                  '2': <span className="dice-number" style={{ color: '#00ff88' }}>2</span>,
+                                  '3': <span className="dice-number" style={{ color: '#00ff88' }}>3</span>,
                                   'Heart': '❤️',
-                                  'Lightning': '⚡',
+                                  'Lightning': <span className="energy-icon">⚡</span>,
                                   'Claw': '💥'
                                 };
-                                return die.face === 'Lightning' 
-                                  ? <span className="energy-icon">⚡</span> 
-                                  : faceIcons[die.face as string];
+                                return faceIcons[die.face as string];
                               })()}
                             </span>
                           </div>
@@ -698,7 +708,7 @@ function App() {
               <li><strong>Objective:</strong> Be the first to 20 Victory Points (⭐) or be the last monster standing!</li>
               <li><strong>Turn:</strong> Roll the dice up to 3 times. Keep or reroll any dice.</li>
               <li><strong>Dice:</strong> 
-                <br/>1️⃣, 2️⃣, 3️⃣: Three of a kind gives that many VP. Extra gives +1 VP.
+                <br/><span className="dice-number" style={{ color: '#00ff88' }}>1</span>, <span className="dice-number" style={{ color: '#00ff88' }}>2</span>, <span className="dice-number" style={{ color: '#00ff88' }}>3</span>: Three of a kind gives that many VP. Extra gives +1 VP.
                 <br/>❤️: Heal 1 damage (not in Tokyo).
                 <br/>⚡: Gain 1 Energy to buy cards.
                 <br/>💥: Deal 1 damage. If in Tokyo, damage all others. If outside, damage monster in Tokyo.
