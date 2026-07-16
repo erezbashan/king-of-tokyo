@@ -154,7 +154,7 @@ function App() {
   });
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [showSettings, setShowSettings] = useState(false);
-  const [localSettings, setLocalSettings] = useState<{ maxHealth: number, startingHealth: number, winningVP: number, startingDice: number, copiesPerCard: number, excludedCards: string[] }>({ maxHealth: 10, startingHealth: 10, winningVP: 20, startingDice: 6, copiesPerCard: 1, excludedCards: [] });
+  const [localSettings, setLocalSettings] = useState<{ maxHealth: number, startingHealth: number, startingEnergy: number, winningVP: number, startingDice: number, copiesPerCard: number, excludedCards: string[] }>({ maxHealth: 10, startingHealth: 10, startingEnergy: 0, winningVP: 20, startingDice: 6, copiesPerCard: 1, excludedCards: [] });
   const [showHelp, setShowHelp] = useState(false);
   const [showStats, setShowStats] = useState(false);
   
@@ -311,7 +311,15 @@ function App() {
         <div className="left-column" style={{ gap: '8px' }}>
           {gameState.status === 'Lobby' && (
             <div className="glass-panel" style={{ padding: '16px', color: 'white', width: 'fit-content' }}>
-              <h3 style={{ marginTop: 0 }}>Game Settings</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ margin: 0 }}>Game Settings</h3>
+                <button 
+                  className="btn outline sm"
+                  onClick={() => setLocalSettings({ maxHealth: 10, startingHealth: 10, startingEnergy: 0, winningVP: 20, startingDice: 6, copiesPerCard: 1, excludedCards: [] })}
+                >
+                  Restore defaults
+                </button>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'auto 60px', gap: '12px 16px', alignItems: 'center' }}>
                 <label style={{ display: 'contents' }}>
                   <span>Starting Dice:</span>
@@ -320,6 +328,10 @@ function App() {
                 <label style={{ display: 'contents' }}>
                   <span>Starting Health:</span>
                   <input type="number" min="1" max="20" value={localSettings.startingHealth} onChange={e => setLocalSettings(s => ({...s, startingHealth: parseInt(e.target.value)||10}))} style={{ width: '60px', padding: '4px', background: 'rgba(0,0,0,0.3)', color: 'white', border: '1px solid #555' }} />
+                </label>
+                <label style={{ display: 'contents' }}>
+                  <span>Starting Energy:</span>
+                  <input type="number" min="0" max="99" value={localSettings.startingEnergy} onChange={e => setLocalSettings(s => ({...s, startingEnergy: parseInt(e.target.value)||0}))} style={{ width: '60px', padding: '4px', background: 'rgba(0,0,0,0.3)', color: 'white', border: '1px solid #555' }} />
                 </label>
                 <label style={{ display: 'contents' }}>
                   <span>Max Health:</span>
@@ -482,10 +494,6 @@ function App() {
                   <div style={{ display: gameState.status === 'GameOver' ? 'none' : 'flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-start' }}>
                     {gameState.currentTurnPlayerId === playerId && gameState.status === 'Playing' ? (
                       (() => {
-                        const activeP = gameState.players[playerId!];
-                        const hasBackgroundDweller = activeP?.cards?.some((c: any) => c.effect?.backgroundDweller);
-                        const unkeptDice = gameState.currentDice.filter(d => !d.kept);
-                        const canUseBackgroundDweller = hasBackgroundDweller && gameState.rollsLeft === 0 && unkeptDice.length > 0 && unkeptDice.every(d => d.face === '3');
                         return (
                           <>
                             {gameState.rollsLeft === 3 && (
@@ -494,20 +502,16 @@ function App() {
                               </button>
                             )}
                             
-                            {(gameState.rollsLeft > 0 && gameState.rollsLeft < 3) || canUseBackgroundDweller ? (
+                            {(gameState.rollsLeft > 0 && gameState.rollsLeft < 3) ? (
                               <>
                                 <button onClick={() => rollDice(gameState.id)} className="btn primary" style={{ animationDelay: `-${Date.now() % 1500}ms` }} disabled={gameState.isAnimating}>
-                                  {canUseBackgroundDweller ? 'Reroll 3s (Background Dweller)' : `Reroll (${gameState.rollsLeft} left)`}
+                                  Reroll ({gameState.rollsLeft} left)
                                 </button>
                                 <button onClick={() => resolveDice(gameState.id)} className="btn warning" disabled={gameState.isAnimating}>
                                   Done
                                 </button>
                               </>
                             ) : null}
-                            {gameState.isAnimating && <span style={{ fontSize: '13px', fontStyle: 'italic', marginLeft: '8px', opacity: 0.7 }}>Rolling...</span>}
-                            {gameState.rollsLeft === 0 && !canUseBackgroundDweller && (
-                              <span className="muted" style={{ paddingLeft: '8px' }}>Buy cards or End Turn above ☝️</span>
-                            )}
                           </>
                         );
                       })()
@@ -746,6 +750,10 @@ function App() {
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Starting Health:</span>
                 <strong>{gameState.settings?.startingHealth || 10}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Starting Energy:</span>
+                <strong>{gameState.settings?.startingEnergy || 0}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Max Health:</span>

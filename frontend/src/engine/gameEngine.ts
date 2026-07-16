@@ -283,8 +283,8 @@ export async function resolveDiceAutomatically(gameId: string, playerId: string)
       }
       p.victoryPoints = Math.min(game.settings?.winningVP || 20, p.victoryPoints + displayPts);
       if (p.gameStats) p.gameStats.vpFromDice = (p.gameStats.vpFromDice || 0) + results.points;
-      if (results.points > 0) {
-        game.logs.push(`${p.name} gained ${results.points} ⭐.`);
+      if (displayPts > 0) {
+        game.logs.push(`${p.name} gained ${displayPts} ⭐.`);
       }
     }
   }
@@ -542,7 +542,7 @@ export async function createGame(gameId: string, playerId: string, username: str
       health: game.settings ? game.settings.startingHealth : 10,
       maxHealth: game.settings ? game.settings.maxHealth : 10,
       victoryPoints: 0,
-      energy: 0,
+      energy: game.settings?.startingEnergy || 0,
       inTokyo: false,
       cards: [],
       poisonTokens: 0,
@@ -628,7 +628,7 @@ export async function joinGame(gameId: string, username: string, playerId: strin
       health: game.settings ? game.settings.startingHealth : 10,
       maxHealth: game.settings ? game.settings.maxHealth : 10,
       victoryPoints: 0,
-      energy: 0,
+      energy: game.settings?.startingEnergy || 0,
       inTokyo: false,
       cards: [],
       poisonTokens: 0,
@@ -673,7 +673,7 @@ export async function addBot(gameId: string, _playerId: string) {
         health: game.settings ? game.settings.startingHealth : 10,
         maxHealth: game.settings ? game.settings.maxHealth : 10,
         victoryPoints: 0,
-        energy: 0,
+        energy: game.settings?.startingEnergy || 0,
         inTokyo: false,
         cards: [],
         poisonTokens: 0,

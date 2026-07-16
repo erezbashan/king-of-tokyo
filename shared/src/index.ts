@@ -144,6 +144,7 @@ export interface GameState {
   settings: {
     maxHealth: number;
     startingHealth: number;
+    startingEnergy?: number;
     winningVP: number;
     startingDice?: number;
     copiesPerCard?: number;

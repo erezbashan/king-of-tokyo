@@ -2,7 +2,7 @@ import type { GameState, Card, DiceRoll, DiceFace } from '@king-of-tokyo/shared'
 import { marketCards } from '@king-of-tokyo/shared';
 
 export function createInitialGameState(id: string, settings?: any): GameState {
-  const gameSettings = settings || { maxHealth: 10, startingHealth: 10, winningVP: 20, startingDice: 6, copiesPerCard: 1, excludedCards: [] };
+  const gameSettings = settings || { maxHealth: 10, startingHealth: 10, startingEnergy: 0, winningVP: 20, startingDice: 6, copiesPerCard: 1, excludedCards: [] };
   const deck = shuffleDeck(gameSettings);
   const initialMarketCards = deck.splice(0, 3);
   return {
