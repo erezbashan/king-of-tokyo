@@ -7,7 +7,7 @@ import { getAuth, connectAuthEmulator } from "firebase/auth";
 const firebaseConfig = {
   apiKey: "demo-api-key",
   authDomain: "demo-project.firebaseapp.com",
-  projectId: "erez-boardgames-portal",
+  projectId: "demo-project",
   storageBucket: "demo-project.firebasestorage.app",
   messagingSenderId: "123456789",
   appId: "1:123456789:web:abcdef"
