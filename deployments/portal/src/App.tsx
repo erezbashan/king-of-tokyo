@@ -1,5 +1,7 @@
 import { Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import { Lobby } from '@erez/boardgame-core';
+import { useReducer, useEffect } from 'react';
+import { FlipsBoard, flipsReducer, initialFlipsState } from '@erez/flips';
 
 function GameSelector() {
   const navigate = useNavigate();
@@ -32,7 +34,6 @@ function GameLobbyWrapper() {
 
   const handleCreateGame = (username: string) => {
     console.log(`Create ${gameType} game with username:`, username);
-    // TODO: Create in Firebase, then navigate to the new ID
     const mockId = Math.random().toString(36).substring(2, 8).toUpperCase();
     navigate(`/${gameType}/${mockId}`);
   };
@@ -58,9 +59,26 @@ function GameLobbyWrapper() {
   );
 }
 
+function ActiveFlipsGame({ gameId }: { gameId: string }) {
+  const [state, dispatch] = useReducer(flipsReducer, initialFlipsState);
+  const navigate = useNavigate();
+  
+  // Simulate joining the game for local testing
+  useEffect(() => {
+    dispatch({ type: 'JOIN_GAME', payload: { playerId: 'p1', name: 'Erez', isBot: false } });
+  }, [gameId]);
+
+  return <FlipsBoard gameState={state} myPlayerId="p1" dispatch={dispatch} onLeaveGame={() => navigate('/flips')} />;
+}
+
 function ActiveGameWrapper() {
   const { gameType, gameId } = useParams();
   const navigate = useNavigate();
+
+  if (gameType === 'flips') {
+    return <ActiveFlipsGame gameId={gameId!} />;
+  }
+
   return (
     <div style={{ padding: '40px', color: 'white', backgroundColor: '#1a1a2e', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <h1>Playing {gameType?.toUpperCase()}</h1>
