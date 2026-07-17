@@ -1,11 +1,18 @@
 {
   "compilerOptions": {
     "module": "commonjs",
-    "noImplicitReturns": true,
+    "jsx": "react-jsx",
+    "lib": [
+      "es2022",
+      "DOM"
+    ],
+    "noImplicitReturns": false,
     "noUnusedLocals": true,
     "outDir": "lib",
     "sourceMap": true,
-    "strict": true,
+    "strict": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
     "target": "es2022"
   },
   "compileOnSave": true,

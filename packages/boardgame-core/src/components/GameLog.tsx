@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Modal } from './Modal';
 
 export interface GameLogProps {
-  logs: string[];
+  logs: React.ReactNode[];
 }
 
 export const GameLog: React.FC<GameLogProps> = ({ logs }) => {

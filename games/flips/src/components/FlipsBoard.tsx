@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { FlipsState, FlipsAction } from '../engine/reducer';
-import { GameLayout, BasePlayer, ChatWindow, GameLog } from '@erez/boardgame-core';
+import type { FlipsState, FlipsAction } from '../engine/reducer';
+import type { BasePlayer } from '@erez/boardgame-core';
+import { GameLayout, ChatWindow, GameLog } from '@erez/boardgame-core';
 
 interface FlipsBoardProps {
   gameState: FlipsState;
@@ -9,18 +10,19 @@ interface FlipsBoardProps {
   onLeaveGame: () => void;
 }
 
-const BOT_NAMES = ["RoboFlippy", "CoinBot", "TailsMcCoy", "HeadyRoosevelt", "TwoFace"];
+const BOT_NAMES = ["Alice", "Bob", "Charlie", "David", "Eve"];
+const OTHER_COLORS = ['#3b82f6', '#ef4444', '#eab308', '#a855f7', '#ec4899', '#f97316'];
 
 export const FlipsBoard: React.FC<FlipsBoardProps> = ({ gameState, myPlayerId, dispatch, onLeaveGame }) => {
   const { status, targetScore, players, playerOrder, currentPlayerIndex, winnerId, lastFlipResult } = gameState;
-  const [logs, setLogs] = useState<{text: string, color?: string}[]>([]);
+  const [logs, setLogs] = useState<React.ReactNode[]>([]);
   const [chatMessages, setChatMessages] = useState<{sender: string, text: string, color?: string}[]>([]);
 
   // Base players for framework
   const basePlayers: BasePlayer[] = playerOrder.map((id, index) => ({
     id,
     name: players[id].name,
-    color: id === myPlayerId ? '#4ade80' : `hsl(${index * 137.5 % 360}, 70%, 60%)`, // Unique colors
+    color: id === myPlayerId ? '#4ade80' : OTHER_COLORS[index % OTHER_COLORS.length], // Avoid collision with green
     isBot: players[id].isBot,
     isWinner: winnerId === id
   }));
@@ -35,12 +37,20 @@ export const FlipsBoard: React.FC<FlipsBoardProps> = ({ gameState, myPlayerId, d
       const p = players[lastFlipResult.playerId];
       const pColor = basePlayers.find(bp => bp.id === lastFlipResult.playerId)?.color;
       const resultText = lastFlipResult.isHeads ? 'Heads (+1)' : 'Tails';
-      setLogs(prev => [...prev, { text: `${p.name} flipped ${resultText}`, color: pColor }, { text: '---' }]);
+      setLogs(prev => [
+        ...prev, 
+        <span key={prev.length}><strong style={{color: pColor}}>{p.name}</strong> flipped {resultText}</span>, 
+        '---'
+      ]);
     }
   }, [lastFlipResult, players]);
 
-  // Bot Auto-Play Logic & Chatter
+  const isHost = playerOrder.length > 0 && playerOrder[0] === myPlayerId;
+
+  // Bot Auto-Play Logic & Chatter (Only Host runs this to prevent duplicate actions)
   useEffect(() => {
+    if (!isHost) return;
+    
     if (status === 'Playing' && currentPlayerId) {
       const currentPlayer = players[currentPlayerId];
       if (currentPlayer.isBot) {
@@ -64,7 +74,7 @@ export const FlipsBoard: React.FC<FlipsBoardProps> = ({ gameState, myPlayerId, d
         return () => clearTimeout(timer);
       }
     }
-  }, [status, currentPlayerId, players, dispatch, chatMessages]);
+  }, [status, currentPlayerId, players, dispatch, chatMessages, isHost]);
 
   const handleStart = () => dispatch({ type: 'START_GAME', payload: { targetScore } });
   const handleAddBot = () => {
@@ -154,6 +164,10 @@ export const FlipsBoard: React.FC<FlipsBoardProps> = ({ gameState, myPlayerId, d
     const maxTurns = Math.max(1, ...Object.values(players).map(p => p.pointsHistory.length - 1));
     const sortedPlayers = [...playerOrder].sort((a, b) => players[b].score - players[a].score);
     
+    // Compute exact SVG dimensions
+    const svgWidth = Math.max(600, maxTurns * 60);
+    const svgHeight = 200;
+
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
         {/* Top: Stats Table */}
@@ -190,30 +204,30 @@ export const FlipsBoard: React.FC<FlipsBoardProps> = ({ gameState, myPlayerId, d
         {/* Bottom: Line Graph */}
         <div>
           <h3 style={{ margin: '0 0 15px 0' }}>Points Progression</h3>
-          <div style={{ background: 'rgba(0,0,0,0.3)', padding: '20px', borderRadius: '12px' }}>
-            <svg width="100%" height="200" style={{ overflow: 'visible' }}>
+          <div style={{ background: 'rgba(0,0,0,0.3)', padding: '20px', borderRadius: '12px', overflowX: 'auto' }}>
+            <svg width={svgWidth} height={svgHeight} style={{ overflow: 'visible', margin: '10px' }}>
               {/* Axes */}
-              <line x1="0" y1="200" x2="100%" y2="200" stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
-              <line x1="0" y1="0" x2="0" y2="200" stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
+              <line x1="0" y1={svgHeight} x2={svgWidth} y2={svgHeight} stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
+              <line x1="0" y1="0" x2="0" y2={svgHeight} stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
               
               {playerOrder.map(id => {
                 const p = players[id];
                 const color = basePlayers.find(bp => bp.id === id)?.color || 'white';
                 
-                // Construct polyline points
+                // Construct polyline points using absolute pixels
                 const points = p.pointsHistory.map((pts, idx) => {
-                  const x = (idx / maxTurns) * 100;
-                  const y = 200 - ((pts / targetScore) * 200);
-                  return `${x}%,${y}`;
+                  const x = (idx / maxTurns) * svgWidth;
+                  const y = svgHeight - ((pts / targetScore) * svgHeight);
+                  return `${x},${y}`;
                 }).join(' ');
 
                 return (
                   <g key={id}>
-                    <polyline fill="none" stroke={color} strokeWidth="3" points={points} />
+                    <polyline fill="none" stroke={color} strokeWidth="4" strokeLinejoin="round" points={points} />
                     {p.pointsHistory.map((pts, idx) => {
-                      const x = (idx / maxTurns) * 100;
-                      const y = 200 - ((pts / targetScore) * 200);
-                      return <circle key={idx} cx={`${x}%`} cy={y} r="4" fill={color} />;
+                      const x = (idx / maxTurns) * svgWidth;
+                      const y = svgHeight - ((pts / targetScore) * svgHeight);
+                      return <circle key={idx} cx={x} cy={y} r="5" fill={color} />;
                     })}
                   </g>
                 );
@@ -230,10 +244,6 @@ export const FlipsBoard: React.FC<FlipsBoardProps> = ({ gameState, myPlayerId, d
     setChatMessages(prev => [...prev, { sender: players[myPlayerId]?.name || 'You', text: msg, color: pColor }]);
   };
 
-  // Convert rich logs to string array for GameLog component
-  const plainLogs = logs.map(l => l.text);
-  // Optional: Update GameLog / ChatWindow to support colors later. For now, GameLog takes string[] and ChatWindow takes {sender, text}.
-
   return (
     <GameLayout
       gameName="Flips"
@@ -249,7 +259,7 @@ export const FlipsBoard: React.FC<FlipsBoardProps> = ({ gameState, myPlayerId, d
       renderGraphics={renderGraphics}
       renderPlayerDetails={renderPlayerDetails}
       renderChat={() => <ChatWindow messages={chatMessages} onSendMessage={handleSendMessage} />}
-      renderLog={() => <GameLog logs={plainLogs} />}
+      renderLog={() => <GameLog logs={logs} />}
       renderStats={renderStats}
     />
   );
