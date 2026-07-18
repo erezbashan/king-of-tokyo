@@ -49,7 +49,7 @@ export const Lobby: React.FC<LobbyProps> = ({
       <h1 className="lobby-title">{title}</h1>
       {onGoHome && (
         <button className="btn secondary" onClick={onGoHome} style={{ marginBottom: '20px' }}>
-          ← Back to Games Menu
+          ← See all games
         </button>
       )}
       

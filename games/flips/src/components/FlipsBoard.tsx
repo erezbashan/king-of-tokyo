@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { FlipsState, FlipsAction } from '../engine/reducer';
 import type { BasePlayer } from '@erez/boardgame-core';
-import { GameLayout, GameLog, useGameContext } from '@erez/boardgame-core';
+import { GameLayout, GameLog, useGameContext, LineChartWidget } from '@erez/boardgame-core';
 
 export const FlipsBoard: React.FC = () => {
   const { gameState, myPlayerId, dispatch } = useGameContext<FlipsState, FlipsAction>();
@@ -92,12 +92,25 @@ export const FlipsBoard: React.FC = () => {
   };
 
   const renderStats = () => {
-    const maxTurns = Math.max(1, ...Object.values(players).map(p => p.pointsHistory.length - 1));
     const sortedPlayers = [...gameState.playerOrder].sort((a, b) => players[b].score - players[a].score);
     
-    // Fixed width to fit inside the 800px modal without scrolling
-    const svgWidth = 720;
-    const svgHeight = 200;
+    // Convert pointsHistory to LineChartData
+    const chartData: any[] = [];
+    const maxTurns = Math.max(1, ...Object.values(players).map(p => p.pointsHistory.length - 1));
+    
+    for (let t = 0; t <= maxTurns; t++) {
+      const turnEntry: any = { name: `T${t}` };
+      gameState.playerOrder.forEach(id => {
+        turnEntry[players[id].name] = players[id].pointsHistory[t] ?? players[id].score;
+      });
+      chartData.push(turnEntry);
+    }
+
+    const lines = gameState.playerOrder.map((id) => ({
+      key: players[id].name,
+      color: players[id].color || 'white',
+      name: players[id].name
+    }));
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
@@ -132,38 +145,8 @@ export const FlipsBoard: React.FC = () => {
         </div>
 
         {/* Bottom: Line Graph */}
-        <div>
-          <h3 style={{ margin: '0 0 15px 0' }}>Points Progression</h3>
-          <div style={{ background: 'rgba(0,0,0,0.3)', padding: '20px', borderRadius: '12px' }}>
-            <svg width={svgWidth} height={svgHeight} style={{ overflow: 'visible', margin: '0 auto', display: 'block' }}>
-              {/* Axes */}
-              <line x1="0" y1={svgHeight} x2={svgWidth} y2={svgHeight} stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
-              <line x1="0" y1="0" x2="0" y2={svgHeight} stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
-              
-              {gameState.playerOrder.map((id, pIndex) => {
-                const p = players[id];
-                const color = p.color || 'white';
-                
-                // Add a slight vertical offset based on player index to prevent overlapping lines
-                const yOffset = (pIndex - gameState.playerOrder.length / 2) * 3;
-                
-                // Construct polyline points using absolute pixels
-                const points = p.pointsHistory.map((pts, idx) => {
-                  const x = (idx / maxTurns) * svgWidth;
-                  // Clamp y to keep it strictly inside the SVG box despite the offset
-                  const base_y = svgHeight - ((pts / targetScore) * svgHeight);
-                  const y = Math.min(Math.max(0, base_y + yOffset), svgHeight);
-                  return `${x},${y}`;
-                }).join(' ');
-
-                return (
-                  <g key={id}>
-                    <polyline fill="none" stroke={color} strokeWidth="4" strokeLinejoin="round" points={points} />
-                  </g>
-                );
-              })}
-            </svg>
-          </div>
+        <div style={{ background: 'rgba(0,0,0,0.3)', padding: '20px', borderRadius: '12px' }}>
+          <LineChartWidget title="Points Progression" data={chartData} lines={lines} height={250} />
         </div>
       </div>
     );

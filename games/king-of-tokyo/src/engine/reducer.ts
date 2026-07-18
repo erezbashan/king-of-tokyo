@@ -15,6 +15,20 @@ export interface KotPlayer extends BasePlayer {
   vp: number;
   energy: number;
   location: 'Outside' | 'TokyoCity';
+  stats: {
+    healthHealed: number;
+    energyGained: number;
+    damageDealt: number;
+    playersKilled: number;
+  };
+}
+
+export interface KotHistorySnapshot {
+  turnNum: number;
+  playerId: string;
+  vps: Record<string, number>;
+  healths: Record<string, number>;
+  tokyoOccupant: string | null;
 }
 
 export interface KotState extends BaseGameState<KotPlayer> {
@@ -24,6 +38,7 @@ export interface KotState extends BaseGameState<KotPlayer> {
     maxHealth: number;
     maxVp: number;
   };
+  history: KotHistorySnapshot[];
 }
 
 export type KotAction = 
@@ -49,7 +64,8 @@ export const initialKotState: KotState = {
     { id: 'd5', value: 'Heart', kept: false },
     { id: 'd6', value: 'Smash', kept: false },
   ],
-  rollCount: 0
+  rollCount: 0,
+  history: []
 };
 
 const DICE_FACES: DiceFace[] = ['1', '2', '3', 'Energy', 'Heart', 'Smash'];
@@ -97,7 +113,13 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
               health: newState.settings?.maxHealth || 10,
               vp: 0,
               energy: 0,
-              location: 'Outside'
+              location: 'Outside',
+              stats: {
+                healthHealed: 0,
+                energyGained: 0,
+                damageDealt: 0,
+                playersKilled: 0
+              }
             }
           }
         };
@@ -108,7 +130,8 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
       newState = { 
         ...newState, 
         rollCount: 0,
-        dice: newState.dice.map(d => ({ ...d, kept: false }))
+        dice: newState.dice.map(d => ({ ...d, kept: false })),
+        history: []
       };
       newState = queueBotActionsIfNeeded(newState);
     }
@@ -121,22 +144,30 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
           health: newState.settings?.maxHealth || 10,
           vp: 0,
           energy: 0,
-          location: 'Outside'
+          location: 'Outside',
+          stats: {
+            healthHealed: 0,
+            energyGained: 0,
+            damageDealt: 0,
+            playersKilled: 0
+          }
         } as KotPlayer;
       });
       newState = { 
         ...newState, 
         rollCount: 0, 
         players: resetPlayers,
-        dice: newState.dice.map(d => ({ ...d, kept: false }))
+        dice: newState.dice.map(d => ({ ...d, kept: false })),
+        history: []
       };
     }
 
     return newState;
   }
 
-  function advanceTurn(st: KotState): KotState {
-    let nextIndex = st.currentPlayerIndex;
+  function checkGameEnd(st: KotState): KotState {
+    if (st.status === 'Finished') return st;
+
     let aliveCount = 0;
     let aliveWinnerId: string | null = null;
     
@@ -166,6 +197,35 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
       };
     }
 
+    return st;
+  }
+
+  function advanceTurn(st: KotState): KotState {
+    st = checkGameEnd(st);
+    if (st.status === 'Finished') return st;
+
+    const currentPlayerId = st.playerOrder[st.currentPlayerIndex];
+    const vps: Record<string, number> = {};
+    const healths: Record<string, number> = {};
+    let tokyoOccupant: string | null = null;
+    
+    st.playerOrder.forEach(id => {
+      vps[id] = st.players[id].vp;
+      healths[id] = st.players[id].health;
+      if (st.players[id].location === 'TokyoCity' && st.players[id].health > 0) {
+        tokyoOccupant = id;
+      }
+    });
+
+    const newHistory = [...st.history, {
+      turnNum: st.history.length + 1,
+      playerId: currentPlayerId,
+      vps,
+      healths,
+      tokyoOccupant
+    }];
+
+    let nextIndex = st.currentPlayerIndex;
     do {
       nextIndex = (nextIndex + 1) % st.playerOrder.length;
     } while (st.players[st.playerOrder[nextIndex]].health <= 0);
@@ -175,15 +235,21 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
       currentPlayerIndex: nextIndex,
       rollCount: 0,
       dice: st.dice.map(d => ({ ...d, kept: false })),
-      logs: [...st.logs, '---']
+      logs: [...st.logs, '---'],
+      history: newHistory
     };
   }
 
   switch (action.type) {
     case 'UPDATE_SETTINGS': {
       if (state.status !== 'Lobby') return state;
+      const newPlayers = { ...state.players };
+      Object.keys(newPlayers).forEach(pId => {
+        newPlayers[pId] = { ...newPlayers[pId], health: action.payload.maxHealth };
+      });
       return {
         ...state,
+        players: newPlayers,
         settings: {
           ...state.settings,
           maxHealth: action.payload.maxHealth,
@@ -206,6 +272,8 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
             [p.id]: { ...p, vp: p.vp + 2 }
           };
           finalState.logs = [...finalState.logs, `${p.name} starts turn in Tokyo! Gained 2 ⭐`];
+          finalState = checkGameEnd(finalState);
+          if (finalState.status === 'Finished') return finalState;
         }
       }
 
@@ -262,9 +330,12 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
       let newEnergy = player.energy;
       let newLogs = [...state.logs, logMessage];
       
+      const newStats = { ...player.stats };
+
       // Energy
       if (outcomeMap['Energy']) {
         newEnergy += outcomeMap['Energy'];
+        newStats.energyGained += outcomeMap['Energy'];
         newLogs.push(`${player.name} gained ${outcomeMap['Energy']} ⚡`);
       }
 
@@ -274,6 +345,7 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
         const actualHeal = Math.min(maxHealth - player.health, outcomeMap['Heart']);
         if (actualHeal > 0) {
           newHealth += actualHeal;
+          newStats.healthHealed += actualHeal;
           newLogs.push(`${player.name} healed ${actualHeal} ❤️`);
         }
       }
@@ -288,7 +360,7 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
         }
       });
 
-      const updatedPlayer = { ...player, health: newHealth, vp: newVp, energy: newEnergy };
+      const updatedPlayer = { ...player, health: newHealth, vp: newVp, energy: newEnergy, stats: newStats };
       let newPlayers = { ...state.players, [player.id]: updatedPlayer };
       let newPrompt = state.prompt;
 
@@ -307,7 +379,9 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
             tokyoPlayers.forEach(tp => {
               newPlayers[tp.id].health = Math.max(0, newPlayers[tp.id].health - smashCount);
               damagedSomeone = true;
+              newPlayers[player.id].stats.damageDealt += Math.min(tp.health, smashCount);
               if (newPlayers[tp.id].health === 0) {
+                newPlayers[player.id].stats.playersKilled += 1;
                 newLogs.push(`💀 ${tp.name} was eliminated!`);
               }
             });
@@ -340,7 +414,9 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
             if (p.location === 'Outside' && p.id !== player.id && p.health > 0) {
               newPlayers[p.id].health = Math.max(0, newPlayers[p.id].health - smashCount);
               damagedSomeone = true;
+              newPlayers[player.id].stats.damageDealt += Math.min(p.health, smashCount);
               if (newPlayers[p.id].health === 0) {
+                newPlayers[player.id].stats.playersKilled += 1;
                 newLogs.push(`💀 ${p.name} was eliminated!`);
               }
             }

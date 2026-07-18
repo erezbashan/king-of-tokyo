@@ -1,6 +1,7 @@
 import React from 'react';
 import type { KotState, KotAction } from '../engine/reducer';
 import { GameLayout, useGameContext } from '@erez/boardgame-core';
+import { KotStats } from './KotStats';
 
 const styles = `
   @keyframes dice-roll {
@@ -13,16 +14,16 @@ const styles = `
   }
   @keyframes pulse-green {
     0% { transform: scale(1); color: #4ade80; }
-    50% { transform: scale(1.8); color: #4ade80; }
+    50% { transform: scale(1.3); color: #4ade80; }
     100% { transform: scale(1); color: inherit; }
   }
   @keyframes pulse-red {
     0% { transform: scale(1); color: #ef4444; }
-    50% { transform: scale(1.8); color: #ef4444; }
+    50% { transform: scale(1.3); color: #ef4444; }
     100% { transform: scale(1); color: inherit; }
   }
-  .pulse-green { animation: pulse-green 0.8s ease-out; }
-  .pulse-red { animation: pulse-red 0.8s ease-out; }
+  .pulse-green { animation: pulse-green 1.5s ease-out; }
+  .pulse-red { animation: pulse-red 1.5s ease-out; }
 `;
 
 const LightningIcon = () => (
@@ -38,12 +39,12 @@ const AnimatedCounter = ({ value, icon, color, suffix, width }: { value: number,
   React.useEffect(() => {
     if (value > prevValue.current) {
       setAnimClass('pulse-green');
-      const timer = setTimeout(() => setAnimClass(''), 1000);
+      const timer = setTimeout(() => setAnimClass(''), 1500);
       prevValue.current = value;
       return () => clearTimeout(timer);
     } else if (value < prevValue.current) {
       setAnimClass('pulse-red');
-      const timer = setTimeout(() => setAnimClass(''), 1000);
+      const timer = setTimeout(() => setAnimClass(''), 1500);
       prevValue.current = value;
       return () => clearTimeout(timer);
     }
@@ -95,6 +96,7 @@ export const KotBoard: React.FC = () => {
   const { status, players, dice, rollCount, prompt, playerOrder, currentPlayerIndex, settings } = gameState;
 
   const [keptDiceIds, setKeptDiceIds] = React.useState<string[]>([]);
+  const [showStats, setShowStats] = React.useState(false);
   const isMyTurn = playerOrder[currentPlayerIndex] === myPlayerId;
 
   // Clear local kept dice when turn ends/begins
@@ -153,22 +155,24 @@ export const KotBoard: React.FC = () => {
     // 2. If it's MY turn and NO prompt
     if (isMyTurn && !prompt) {
       return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-end' }}>
-          {rollCount < 3 && (
-            <button className="btn primary" onClick={handleRoll} style={{ padding: '15px 30px', fontSize: '20px', width: '250px' }}>
-               {rollCount === 0 ? "🎲 ROLL DICE" : `🎲 REROLL DICE`}
-            </button>
-          )}
-          {rollCount > 0 && rollCount < 3 && (
-            <button className="btn" onClick={handleResolve} style={{ padding: '15px 30px', fontSize: '20px', width: '250px', background: '#10b981', color: 'white', border: 'none' }}>
-              ✅ DONE
-            </button>
-          )}
-          {rollCount >= 3 && (
-            <div style={{ padding: '15px 30px', fontSize: '20px', width: '250px', background: 'rgba(255,255,255,0.1)', color: 'white', borderRadius: '8px', textAlign: 'center' }}>
-              Resolving...
-            </div>
-          )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-end', minHeight: '60px' }}>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            {rollCount > 0 && rollCount < 3 && (
+              <button className="btn" onClick={handleResolve} style={{ padding: '15px 30px', fontSize: '20px', width: '150px', background: '#10b981', color: 'white', border: 'none' }}>
+                ✅ DONE
+              </button>
+            )}
+            {rollCount < 3 && (
+              <button className="btn primary" onClick={handleRoll} style={{ padding: '15px 30px', fontSize: '20px', width: '200px' }}>
+                 {rollCount === 0 ? "🎲 ROLL DICE" : `🎲 REROLL DICE`}
+              </button>
+            )}
+            {rollCount >= 3 && (
+              <div style={{ padding: '15px 30px', fontSize: '20px', width: '360px', background: 'rgba(255,255,255,0.1)', color: 'white', borderRadius: '8px', textAlign: 'center' }}>
+                Resolving...
+              </div>
+            )}
+          </div>
         </div>
       );
     }
@@ -203,7 +207,10 @@ export const KotBoard: React.FC = () => {
           </div>
 
           {/* Top Right: Prompts & Turn Controls */}
-          <div style={{ flex: 1, marginLeft: '20px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <div style={{ flex: 1, marginLeft: '20px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center', gap: '10px' }}>
+            <button className="btn secondary" onClick={() => setShowStats(true)} style={{ alignSelf: 'flex-end', fontSize: '14px', padding: '5px 15px' }}>
+              📊 View Stats
+            </button>
             {renderPromptsAndControls()}
           </div>
         </div>
@@ -286,6 +293,7 @@ export const KotBoard: React.FC = () => {
       settings={renderSettings(settings, dispatch, status)}
     >
       {renderGraphics()}
+      {showStats && <KotStats gameState={gameState} onClose={() => setShowStats(false)} />}
     </GameLayout>
   );
 };
