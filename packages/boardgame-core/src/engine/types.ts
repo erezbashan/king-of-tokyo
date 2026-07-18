@@ -4,6 +4,7 @@ export interface BasePlayer {
   id: string;
   name: string;
   isBot: boolean;
+  botStrategy?: string;
   color?: string;
   isWinner?: boolean;
 }
@@ -20,6 +21,12 @@ export interface ScheduledAction {
   action: any;
 }
 
+export interface GamePrompt {
+  playerId: string;
+  text: string;
+  options: { label: string; action: any; color?: string }[];
+}
+
 export interface BaseGameState<TPlayer extends BasePlayer = BasePlayer> {
   status: GameStatus;
   players: Record<string, TPlayer>;
@@ -29,10 +36,11 @@ export interface BaseGameState<TPlayer extends BasePlayer = BasePlayer> {
   chatMessages: ChatMessage[];
   logs: string[];
   actionQueue?: ScheduledAction[];
+  prompt?: GamePrompt;
 }
 
 export type BaseAction = 
-  | { type: 'JOIN_GAME', payload: { playerId: string, name: string, isBot: boolean } }
+  | { type: 'JOIN_GAME', payload: { playerId: string, name: string, isBot: boolean, botStrategy?: string } }
   | { type: 'START_GAME' }
   | { type: 'NEW_GAME' }
   | { type: 'LEAVE_GAME', payload: { playerId: string } }

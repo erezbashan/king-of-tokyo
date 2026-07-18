@@ -12,6 +12,7 @@ export interface GameLayoutProps {
   
   // Content Slots
   helpText?: string;
+  helpUrl?: string;
   children?: React.ReactNode; 
   settings?: React.ReactNode; 
   renderGameSpecificPlayerDetails?: (playerId: string) => React.ReactNode;
@@ -21,6 +22,7 @@ export interface GameLayoutProps {
 export const GameLayout: React.FC<GameLayoutProps> = ({
   gameName,
   helpText,
+  helpUrl,
   settings,
   children,
   renderGameSpecificPlayerDetails,
@@ -145,6 +147,13 @@ export const GameLayout: React.FC<GameLayoutProps> = ({
 
       <Modal isOpen={showHelp} title="Help" onClose={() => setShowHelp(false)}>
         <p style={{ lineHeight: '1.6', fontSize: '1.1rem' }}>{helpText || "No help text provided for this game."}</p>
+        {helpUrl && (
+          <div style={{ marginTop: '20px' }}>
+            <a href={helpUrl} target="_blank" rel="noreferrer" style={{ color: '#3b82f6', textDecoration: 'none', fontWeight: 'bold' }}>
+              Read the full rules on Wikipedia
+            </a>
+          </div>
+        )}
         <div style={{ marginTop: '30px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '20px' }}>
           <p style={{ color: 'gray' }}>Got feedback or found a bug?</p>
           <a href="mailto:erez.bashan@gmail.com" target="_blank" rel="noreferrer" style={{ color: '#3b82f6', textDecoration: 'none', fontWeight: 'bold' }}>Email erez.bashan@gmail.com</a>

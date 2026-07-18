@@ -19,7 +19,7 @@ export function baseReducer<T extends BaseGameState>(state: T, action: BaseActio
   switch (action.type) {
     case 'JOIN_GAME': {
       if (state.status !== 'Lobby') return state;
-      const { playerId, name, isBot } = action.payload;
+      const { playerId, name, isBot, botStrategy } = action.payload;
       if (state.players[playerId]) return state; // Already joined
       
       const newPlayerOrder = [...state.playerOrder, playerId];
@@ -29,7 +29,7 @@ export function baseReducer<T extends BaseGameState>(state: T, action: BaseActio
         ...state,
         players: {
           ...state.players,
-          [playerId]: { id: playerId, name, isBot, color }
+          [playerId]: { id: playerId, name, isBot, botStrategy, color }
         },
         playerOrder: newPlayerOrder
       };

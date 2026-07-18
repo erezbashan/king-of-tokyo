@@ -53,23 +53,31 @@ const AnimatedCounter = ({ value, icon, color }: { value: number, icon: string, 
 
 export const KotBoard: React.FC = () => {
   const { gameState, myPlayerId, dispatch } = useGameContext<KotState, KotAction>();
-  const { status, players, dice, rollCount } = gameState;
+  const { status, players, dice, rollCount, prompt, playerOrder, currentPlayerIndex } = gameState;
 
-  const isMyTurn = gameState.playerOrder[gameState.currentPlayerIndex] === myPlayerId;
+  const [keptDiceIds, setKeptDiceIds] = React.useState<string[]>([]);
+  const isMyTurn = playerOrder[currentPlayerIndex] === myPlayerId;
+
+  // Clear local kept dice when turn ends/begins
+  React.useEffect(() => {
+    if (rollCount === 0) {
+      setKeptDiceIds([]);
+    }
+  }, [rollCount]);
 
   const handleRoll = () => {
-    if (!isMyTurn || status !== 'Playing') return;
-    dispatch({ type: 'ROLL_DICE', payload: { playerId: myPlayerId } });
+    if (!isMyTurn || status !== 'Playing' || prompt) return;
+    dispatch({ type: 'ROLL_DICE', payload: { playerId: myPlayerId, keptDiceIds } });
   };
 
   const handleResolve = () => {
-    if (!isMyTurn || status !== 'Playing' || rollCount === 0) return;
+    if (!isMyTurn || status !== 'Playing' || rollCount === 0 || prompt) return;
     dispatch({ type: 'RESOLVE_DICE', payload: { playerId: myPlayerId } });
   };
 
   const toggleKeep = (diceId: string) => {
-    if (!isMyTurn || status !== 'Playing' || rollCount === 0 || rollCount >= 3) return;
-    dispatch({ type: 'TOGGLE_KEEP_DICE', payload: { playerId: myPlayerId, diceId } });
+    if (!isMyTurn || status !== 'Playing' || rollCount === 0 || rollCount >= 3 || prompt) return;
+    setKeptDiceIds(prev => prev.includes(diceId) ? prev.filter(id => id !== diceId) : [...prev, diceId]);
   };
 
   const getDiceFace = (val: string) => {
@@ -84,84 +92,113 @@ export const KotBoard: React.FC = () => {
     }
   };
 
+  const renderPromptsAndControls = () => {
+    if (status !== 'Playing') return null;
+
+    // 1. If there's an active prompt for ME
+    if (prompt && prompt.playerId === myPlayerId) {
+      return (
+        <div style={{ background: 'rgba(239, 68, 68, 0.2)', padding: '20px', borderRadius: '12px', border: '1px solid #ef4444' }}>
+          <h3 style={{ margin: '0 0 15px 0' }}>{prompt.text}</h3>
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+            {prompt.options.map((opt, i) => (
+              <button key={i} className="btn primary" onClick={() => dispatch(opt.action)}>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // 2. If it's MY turn and NO prompt
+    if (isMyTurn && !prompt) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-end' }}>
+          {rollCount < 3 && (
+            <button className="btn primary" onClick={handleRoll} style={{ padding: '15px 30px', fontSize: '20px', width: '250px' }}>
+               {rollCount === 0 ? "🎲 ROLL DICE" : `🎲 REROLL DICE`}
+            </button>
+          )}
+          {rollCount > 0 && (
+            <button className="btn" onClick={handleResolve} style={{ padding: '15px 30px', fontSize: '20px', width: '250px', background: '#10b981', color: 'white', border: 'none' }}>
+              ✅ DONE
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    // 3. Not my turn / Waiting
+    let message = "Waiting for game to start...";
+    if (prompt) {
+      message = `Waiting for ${players[prompt.playerId]?.name} to decide...`;
+    } else if (playerOrder[currentPlayerIndex]) {
+      message = `Waiting for ${players[playerOrder[currentPlayerIndex]]?.name}'s turn...`;
+    }
+
+    return (
+      <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '18px', fontStyle: 'italic', padding: '20px' }}>
+        {message}
+      </div>
+    );
+  };
+
   const renderGraphics = () => {
     if (status !== 'Playing' && status !== 'Finished') return null;
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '20px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '20px', boxSizing: 'border-box' }}>
         <style dangerouslySetInnerHTML={{ __html: styles }} />
-        <h2>Dice (Rolls left: {3 - rollCount})</h2>
-        <div style={{ display: 'flex', gap: '15px', marginBottom: '40px' }}>
-          {dice.map((d) => (
-            <div 
-              key={d.kept ? d.id : `dice-${d.id}-${rollCount}`}
-              onClick={() => toggleKeep(d.id)}
-              className={!d.kept && rollCount > 0 ? 'dice-rolling' : ''}
-              style={{
-                width: '80px',
-                height: '80px',
-                background: d.kept ? '#22c55e' : 'rgba(255,255,255,0.1)',
-                border: d.kept ? '3px solid #4ade80' : '2px solid rgba(255,255,255,0.3)',
-                borderRadius: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '36px',
-                fontWeight: 'bold',
-                cursor: (isMyTurn && rollCount > 0 && rollCount < 3) ? 'pointer' : 'default',
-                boxShadow: d.kept ? '0 0 15px rgba(74, 222, 128, 0.5)' : 'none',
-                opacity: rollCount === 0 ? 0.3 : 1,
-                position: 'relative'
-              }}
-            >
-              {rollCount > 0 ? getDiceFace(d.value) : '?'}
-              {d.kept && <div style={{position: 'absolute', top: '-10px', right: '-10px', fontSize: '20px'}}>🔒</div>}
-            </div>
-          ))}
+        
+        {/* Top Row: Cards and Prompts */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '40px', minHeight: '150px' }}>
+          {/* Top Left: Cards */}
+          <div style={{ flex: 1, border: '2px dashed rgba(255,255,255,0.2)', borderRadius: '12px', padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.2)' }}>
+            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '24px', fontWeight: 'bold' }}>Cards Area (Coming Soon)</span>
+          </div>
+
+          {/* Top Right: Prompts & Turn Controls */}
+          <div style={{ flex: 1, marginLeft: '20px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'center' }}>
+            {renderPromptsAndControls()}
+          </div>
         </div>
 
-        {status === 'Playing' && (
-          <div style={{ display: 'flex', gap: '20px' }}>
-            {rollCount < 3 && (
-              <button 
-                className="btn primary"
-                onClick={handleRoll} 
-                disabled={!isMyTurn}
-                style={{ 
-                  padding: '20px 40px', 
-                  fontSize: '24px', 
-                  cursor: isMyTurn ? 'pointer' : 'not-allowed',
-                  opacity: isMyTurn ? 1 : 0.5,
-                  borderRadius: '12px',
-                  boxShadow: isMyTurn ? '0 0 20px rgba(59, 130, 246, 0.5)' : 'none'
-                }}
-              >
-                {isMyTurn ? (rollCount === 0 ? "🎲 ROLL DICE" : `🎲 REROLL DICE`) : "Waiting for turn..."}
-              </button>
-            )}
-            
-            {rollCount > 0 && (
-              <button 
-                className="btn"
-                onClick={handleResolve} 
-                disabled={!isMyTurn}
-                style={{ 
-                  padding: '20px 40px', 
-                  fontSize: '24px', 
-                  cursor: isMyTurn ? 'pointer' : 'not-allowed',
-                  opacity: isMyTurn ? 1 : 0.5,
-                  borderRadius: '12px',
-                  background: '#10b981',
-                  color: 'white',
-                  border: 'none',
-                  boxShadow: isMyTurn ? '0 0 20px rgba(16, 185, 129, 0.5)' : 'none'
-                }}
-              >
-                ✅ RESOLVE DICE
-              </button>
-            )}
+        {/* Middle: Dice */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <h2 style={{ marginBottom: '20px' }}>Dice (Rolls left: {3 - rollCount})</h2>
+          <div style={{ display: 'flex', gap: '15px' }}>
+            {dice.map((d) => {
+              const isDiceKept = d.kept || (isMyTurn && rollCount > 0 && keptDiceIds.includes(d.id));
+              return (
+                <div 
+                  key={isDiceKept ? d.id : `dice-${d.id}-${rollCount}`}
+                  onClick={() => toggleKeep(d.id)}
+                  className={!isDiceKept && rollCount > 0 ? 'dice-rolling' : ''}
+                  style={{
+                    width: '80px',
+                    height: '80px',
+                    background: isDiceKept ? '#22c55e' : 'rgba(255,255,255,0.1)',
+                    border: isDiceKept ? '3px solid #4ade80' : '2px solid rgba(255,255,255,0.3)',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '36px',
+                    fontWeight: 'bold',
+                    cursor: (isMyTurn && rollCount > 0 && rollCount < 3 && !prompt) ? 'pointer' : 'default',
+                    boxShadow: isDiceKept ? '0 0 15px rgba(74, 222, 128, 0.5)' : 'none',
+                    opacity: rollCount === 0 ? 0.3 : 1,
+                    position: 'relative'
+                  }}
+                >
+                  {rollCount > 0 ? getDiceFace(d.value) : '?'}
+                  {isDiceKept && <div style={{position: 'absolute', top: '-10px', right: '-10px', fontSize: '20px'}}>🔒</div>}
+                </div>
+              );
+            })}
           </div>
-        )}
+        </div>
       </div>
     );
   };
@@ -186,6 +223,7 @@ export const KotBoard: React.FC = () => {
     <GameLayout
       gameName="King of Tokyo"
       helpText="Roll dice up to 3 times. Reach 20 VP or be the last monster standing!"
+      helpUrl="https://en.wikipedia.org/wiki/King_of_Tokyo"
       renderGameSpecificPlayerDetails={renderPlayerDetails}
     >
       {renderGraphics()}
