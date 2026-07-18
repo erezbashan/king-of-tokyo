@@ -3,7 +3,8 @@ import type { KotState } from '../../reducer';
 export type CardEvent = 
   | 'BEFORE_RESOLVE_ATTACKS' // Modify smash count
   | 'AFTER_ATTACK'        // Fired when player deals damage (Alpha Monster)
-  | 'BUY_CARD_EVAL';      // Fired when evaluating cost (Alien Metabolism)
+  | 'BUY_CARD_EVAL'       // Fired when evaluating cost (Alien Metabolism)
+  | 'BUY_CARD';           // Fired when actually buying a card
 
 export interface CardEventPayload {
   playerId: string;
@@ -11,7 +12,7 @@ export interface CardEventPayload {
   smashCount?: { smashCount: number };
   damagedSomeone?: boolean;
   cost?: number;
-  costModifiers?: string[];
+  cardId?: string;
   [key: string]: any;     // Other event-specific data (e.g., cost, damagedSomeone)
 }
 

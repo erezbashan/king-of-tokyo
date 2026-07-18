@@ -617,19 +617,20 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
       const card = CARD_REGISTRY[cardId];
       if (!card || !state.market.includes(cardId)) return state;
 
-      const payload = { playerId: player.id, cardOwnerId: player.id, cost: card.cost };
-      dispatchEvent(state, 'BUY_CARD_EVAL', payload);
+      const payloadEval = { playerId: player.id, cardOwnerId: player.id, cost: card.cost };
+      dispatchEvent(state, 'BUY_CARD_EVAL', payloadEval);
       
-      if (player.energy < payload.cost) return state;
+      if (player.energy < (payloadEval.cost || 0)) return state;
 
       let finalState = { ...state };
-      let newPlayer = { ...player, energy: player.energy - (payload.cost || 0) };
       
-      let logMsg = `${player.name} bought ${card.name} for ${payload.cost} ⚡!`;
-      if (payload.costModifiers && payload.costModifiers.length > 0) {
-        logMsg += ` (Reduced by ${payload.costModifiers.join(', ')})`;
-      }
-      finalState.logs = [...finalState.logs, logMsg];
+      const payloadBuy = { playerId: player.id, cardOwnerId: player.id, cardId, cost: card.cost };
+      finalState = dispatchEvent(finalState, 'BUY_CARD', payloadBuy);
+      
+      const finalCost = payloadBuy.cost || 0;
+      let newPlayer = { ...finalState.players[player.id], energy: finalState.players[player.id].energy - finalCost };
+      
+      finalState.logs = [...finalState.logs, `${newPlayer.name} bought ${card.name} for ${finalCost} ⚡!`];
 
       if (card.type === 'Keep') {
         newPlayer.cards = [...(newPlayer.cards || []), card.id];
