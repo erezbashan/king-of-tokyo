@@ -11,8 +11,8 @@ export const AcidAttack: KotCard = {
       const ownerId = payload.cardOwnerId;
       if (payload.playerId !== ownerId) return; // Only triggers on owner's turn
 
-      if (typeof payload.smashCount === 'number') {
-        payload.smashCount += 1;
+      if (payload.smashCount && typeof payload.smashCount.smashCount === 'number') {
+        payload.smashCount.smashCount += 1;
         // Optionally add a log here, but the engine will log the total smash count
         return { ...state, logs: [...state.logs, `🧪 ${state.players[ownerId].name}'s Acid Attack adds 1 💥!`] };
       }

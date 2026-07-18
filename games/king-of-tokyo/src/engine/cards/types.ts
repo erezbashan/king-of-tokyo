@@ -1,4 +1,4 @@
-import type { KotState } from '../../reducer';
+import type { KotState } from '../reducer';
 
 export type CardEvent = 
   | 'BEFORE_RESOLVE_ATTACKS' // Modify smash count

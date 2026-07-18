@@ -353,7 +353,9 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
         settings: {
           ...state.settings,
           maxHealth: action.payload.maxHealth,
-          maxVp: action.payload.maxVp
+          maxVp: action.payload.maxVp,
+          cardsPerType: action.payload.cardsPerType,
+          activeCards: action.payload.activeCards
         }
       };
     }
