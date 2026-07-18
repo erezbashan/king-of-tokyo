@@ -15,12 +15,14 @@ export interface ChatMessage {
   isSystem?: boolean;
 }
 
-export interface BaseGameState {
+export interface BaseGameState<TPlayer extends BasePlayer = BasePlayer> {
   status: GameStatus;
-  players: Record<string, BasePlayer>;
+  players: Record<string, TPlayer>;
   playerOrder: string[];
+  currentPlayerIndex: number;
   winnerId: string | null;
   chatMessages: ChatMessage[];
+  logs: string[];
 }
 
 export type BaseAction = 
@@ -28,6 +30,7 @@ export type BaseAction =
   | { type: 'START_GAME' }
   | { type: 'NEW_GAME' }
   | { type: 'LEAVE_GAME', payload: { playerId: string } }
+  | { type: 'REMOVE_PLAYER', payload: { playerId: string } }
   | { type: 'SEND_CHAT_MESSAGE', payload: { sender: string, text: string, color?: string } };
 
 export const BOT_NAMES = ["Alice", "Bob", "Charlie", "David", "Eve"];

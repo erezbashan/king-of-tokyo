@@ -5,6 +5,8 @@ export interface GameController {
   handleStart: () => void;
   handleAddBot: () => void;
   handleSendMessage: (msg: string, senderName: string, senderColor?: string) => void;
+  handleRemovePlayer: (playerId: string) => void;
+  handleNewGame: () => void;
 }
 
 export function useGameController(dispatch: (action: BaseAction) => void): GameController {
@@ -25,5 +27,13 @@ export function useGameController(dispatch: (action: BaseAction) => void): GameC
     });
   };
 
-  return { handleStart, handleAddBot, handleSendMessage };
+  const handleRemovePlayer = (playerId: string) => {
+    dispatch({ type: 'REMOVE_PLAYER', payload: { playerId } });
+  };
+
+  const handleNewGame = () => {
+    dispatch({ type: 'NEW_GAME' });
+  };
+
+  return { handleStart, handleAddBot, handleSendMessage, handleRemovePlayer, handleNewGame };
 }

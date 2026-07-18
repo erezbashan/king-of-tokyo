@@ -10,10 +10,8 @@ export interface FlipsPlayer extends BasePlayer {
   pointsHistory: number[];
 }
 
-export interface FlipsState extends BaseGameState {
+export interface FlipsState extends BaseGameState<FlipsPlayer> {
   targetScore: number;
-  currentPlayerIndex: number;
-  players: Record<string, FlipsPlayer>;
   lastFlipResult: { playerId: string, isHeads: boolean } | null;
 }
 
@@ -23,11 +21,9 @@ export type FlipsAction =
   | { type: 'SET_TARGET_SCORE', payload: { targetScore: number } };
 
 export const initialFlipsState: FlipsState = {
-  ...baseInitialState,
+  ...(baseInitialState as unknown as FlipsState),
   targetScore: 3,
-  currentPlayerIndex: 0,
-  lastFlipResult: null,
-  players: {}
+  lastFlipResult: null
 };
 
 export function flipsReducer(state: FlipsState, action: FlipsAction): FlipsState {
@@ -121,11 +117,7 @@ export function flipsReducer(state: FlipsState, action: FlipsAction): FlipsState
         newWinnerId = action.payload.playerId;
       }
 
-      const systemMessage = {
-        sender: 'System',
-        text: `${player.name} flipped ${isHeads ? 'Heads' : 'Tails'}!`,
-        isSystem: true
-      };
+      const logMessage = `${player.name} flipped ${isHeads ? 'Heads' : 'Tails'}!`;
 
       return {
         ...state,
@@ -134,7 +126,7 @@ export function flipsReducer(state: FlipsState, action: FlipsAction): FlipsState
         winnerId: newWinnerId,
         currentPlayerIndex: (state.currentPlayerIndex + 1) % state.playerOrder.length,
         lastFlipResult: { playerId: action.payload.playerId, isHeads },
-        chatMessages: [...state.chatMessages, systemMessage]
+        logs: [...state.logs, logMessage]
       };
     }
     default:

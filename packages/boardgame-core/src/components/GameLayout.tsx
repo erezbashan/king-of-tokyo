@@ -2,54 +2,47 @@ import React, { useState, useEffect } from 'react';
 import './GameLayout.css';
 import { Modal } from './Modal';
 import { ChatWindow } from './ChatWindow';
-import type { BasePlayer, ChatMessage, GameStatus } from '../engine/types';
+import { useGameController } from '../hooks/useGameController';
+import { GameLog } from './GameLog';
+import type { BaseGameState, BasePlayer, ChatMessage, GameStatus } from '../engine/types';
 
-export interface GameLayoutProps {
+export interface GameLayoutProps<TGameState extends BaseGameState = BaseGameState> {
   gameName: string;
-  status: GameStatus;
-  players: BasePlayer[];
-  currentPlayerId?: string;
-  chatMessages?: ChatMessage[];
-  
-  // Actions
-  onStartGame?: () => void;
-  onAddBot?: () => void;
-  onLeaveGame?: () => void;
-  onNewGame?: () => void;
-  onSendMessage?: (msg: string) => void;
+  gameState: TGameState;
+  myPlayerId: string;
+  dispatch: (action: any) => void;
+  onLeaveGame: () => void;
   
   // Content Slots
   helpText?: string;
-  renderSettings?: () => React.ReactNode;
-  renderGraphics?: () => React.ReactNode;
+  children?: React.ReactNode; // Previously renderGraphics
+  settings?: React.ReactNode; // Previously renderSettings
   renderGameSpecificPlayerDetails?: (playerId: string) => React.ReactNode;
-  renderChat?: () => React.ReactNode;
-  renderLog?: () => React.ReactNode;
   renderGameSpecificStats?: () => React.ReactNode;
 }
 
-export const GameLayout: React.FC<GameLayoutProps> = ({
+export const GameLayout = <TGameState extends BaseGameState>({
   gameName,
-  status,
-  players,
-  currentPlayerId,
-  onStartGame,
-  onAddBot,
+  gameState,
+  myPlayerId,
+  dispatch,
   onLeaveGame,
-  onNewGame,
-  onSendMessage,
   helpText,
-  renderSettings,
-  renderGraphics,
+  settings,
+  children,
   renderGameSpecificPlayerDetails,
-  chatMessages,
-  renderLog,
   renderGameSpecificStats
-}) => {
+}: GameLayoutProps<TGameState>) => {
   const [showSettings, setShowSettings] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showStats, setShowStats] = useState(false);
+
+  const { handleStart, handleAddBot, handleSendMessage, handleNewGame, handleRemovePlayer } = useGameController(dispatch);
+  
+  const { status, players: playersMap, playerOrder, currentPlayerIndex, chatMessages, logs } = gameState;
+  const players = playerOrder.map((id: string) => playersMap[id]);
+  const currentPlayerId = playerOrder[currentPlayerIndex];
 
   // Auto-show stats after 2 seconds when finished
   useEffect(() => {
@@ -67,28 +60,26 @@ export const GameLayout: React.FC<GameLayoutProps> = ({
       <div className="game-top-bar">
         <h1 className="game-title">{gameName}</h1>
         <div className="game-top-actions">
-          {status === 'Lobby' && onStartGame && (
-            <button className="btn primary" onClick={onStartGame}>Start Game</button>
+          {status === 'Lobby' && playerOrder.length > 1 && (
+            <button className="btn primary" onClick={handleStart}>Start Game</button>
           )}
-          {status === 'Lobby' && onAddBot && (
-            <button className="btn secondary" onClick={onAddBot}>Add Bot</button>
+          {status === 'Lobby' && (
+            <button className="btn secondary" onClick={handleAddBot}>Add Bot</button>
           )}
-          {(status === 'Lobby' || status === 'Playing') && renderSettings && (
+          {(status === 'Lobby' || status === 'Playing') && settings && (
             <button className="btn secondary" onClick={() => setShowSettings(true)}>Settings</button>
           )}
-          {status === 'Finished' && onNewGame && (
-            <button className="btn primary" onClick={onNewGame}>New Game</button>
+          {status === 'Finished' && (
+            <button className="btn primary" onClick={handleNewGame}>New Game</button>
           )}
           {status === 'Finished' && renderGameSpecificStats && (
             <button className="btn secondary" onClick={() => setShowStats(true)}>Stats</button>
           )}
           <button className="btn secondary" onClick={() => setShowShare(true)}>Share</button>
           
-          {onLeaveGame && (
-            <button className="btn danger" onClick={onLeaveGame}>
-              {status === 'Playing' ? 'Quit Game' : 'Back to Lobby'}
-            </button>
-          )}
+          <button className="btn danger" onClick={onLeaveGame}>
+            {status === 'Playing' ? 'Quit Game' : 'Back to Lobby'}
+          </button>
           <button className="btn secondary" onClick={() => setShowHelp(true)}>Help</button>
         </div>
       </div>
@@ -98,17 +89,20 @@ export const GameLayout: React.FC<GameLayoutProps> = ({
         {/* LEFT PANE */}
         <div className="game-left-pane">
           <div className="game-stage-area">
-            {status === 'Lobby' && renderSettings && renderSettings()}
-            {status !== 'Lobby' && renderGraphics && renderGraphics()}
+            {status === 'Lobby' && settings}
+            {status !== 'Lobby' && children}
           </div>
           <div className="game-bottom-area">
             <div className="game-log-wrapper">
-              {renderLog && renderLog()}
+              <GameLog logs={
+                logs.flatMap((l: string, index: number) => [<span key={`msg-${index}`}>{l}</span>, '---'])
+              } />
             </div>
             <div className="game-chat-wrapper">
-              {chatMessages && onSendMessage && (
-                <ChatWindow messages={chatMessages} onSendMessage={onSendMessage} />
-              )}
+              <ChatWindow 
+                messages={chatMessages} 
+                onSendMessage={(msg) => handleSendMessage(msg, playersMap[myPlayerId]?.name || 'You', playersMap[myPlayerId]?.color)} 
+              />
             </div>
           </div>
         </div>
@@ -119,15 +113,25 @@ export const GameLayout: React.FC<GameLayoutProps> = ({
             Players ({players.length})
           </h3>
           
-          {players.map(p => {
+          {players.map((p: any) => {
             const isPlaying = p.id === currentPlayerId && status === 'Playing';
+            const isMe = p.id === myPlayerId;
             return (
-              <div key={p.id} className={`player-card ${isPlaying ? 'is-playing' : ''} ${p.isWinner ? 'is-winner' : ''}`} style={{ borderLeftColor: p.color || 'rgba(255,255,255,0.1)', borderLeftWidth: p.color ? '4px' : '1px' }}>
+              <div key={p.id} className={`player-card ${isPlaying ? 'is-playing' : ''} ${p.isWinner ? 'is-winner' : ''}`} style={{ borderLeftColor: p.color || 'rgba(255,255,255,0.1)', borderLeftWidth: p.color ? '4px' : '1px', position: 'relative' }}>
                 <div className="player-card-header">
                   <span className="player-name">
-                    {p.name} {p.isBot && <span title="Bot">🤖</span>} {p.isWinner && <span title="Winner" style={{ marginLeft: '5px' }}>🏆</span>}
+                    {p.name} {p.isBot && <span title="Bot">🤖</span>} {isMe && <span style={{ color: 'gray', fontSize: '0.8em' }}>(You)</span>} {p.isWinner && <span title="Winner" style={{ marginLeft: '5px' }}>🏆</span>}
                   </span>
                   {isPlaying && <span className="playing-banner">Playing</span>}
+                  {status === 'Lobby' && !isMe && (
+                    <button 
+                      className="btn danger" 
+                      style={{ padding: '2px 6px', fontSize: '10px', marginLeft: 'auto' }}
+                      onClick={() => handleRemovePlayer(p.id)}
+                    >
+                      Remove
+                    </button>
+                  )}
                 </div>
                 <div className="player-card-content">
                   {renderGameSpecificPlayerDetails && renderGameSpecificPlayerDetails(p.id)}
@@ -140,7 +144,7 @@ export const GameLayout: React.FC<GameLayoutProps> = ({
 
       {/* MODALS */}
       <Modal isOpen={showSettings} title="Game Settings" onClose={() => setShowSettings(false)}>
-        {renderSettings && renderSettings()}
+        {settings}
       </Modal>
 
       <Modal isOpen={showHelp} title="Help" onClose={() => setShowHelp(false)}>

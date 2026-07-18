@@ -7,7 +7,9 @@ export function createBaseGameState(): BaseGameState {
     players: {},
     playerOrder: [],
     winnerId: null,
-    chatMessages: []
+    chatMessages: [],
+    logs: [],
+    currentPlayerIndex: 0
   };
 }
 
@@ -37,12 +39,33 @@ export function baseReducer<T extends BaseGameState>(state: T, action: BaseActio
       return { ...state, status: 'Playing' };
     }
     case 'NEW_GAME': {
-      // Keep players but reset status and chat
+      const newPlayers = { ...state.players };
+      const newPlayerOrder = state.playerOrder.filter(id => !newPlayers[id].isBot);
+      for (const id in newPlayers) {
+        if (newPlayers[id].isBot) delete newPlayers[id];
+      }
+      
       return {
         ...state,
         status: 'Lobby',
         winnerId: null,
-        chatMessages: []
+        chatMessages: [],
+        logs: [],
+        players: newPlayers,
+        playerOrder: newPlayerOrder,
+        currentPlayerIndex: 0
+      };
+    }
+    case 'REMOVE_PLAYER': {
+      if (state.status !== 'Lobby') return state;
+      const { playerId } = action.payload;
+      const newPlayers = { ...state.players };
+      delete newPlayers[playerId];
+      const newPlayerOrder = state.playerOrder.filter(id => id !== playerId);
+      return {
+        ...state,
+        players: newPlayers,
+        playerOrder: newPlayerOrder
       };
     }
     case 'SEND_CHAT_MESSAGE': {

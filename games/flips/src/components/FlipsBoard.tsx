@@ -11,25 +11,14 @@ interface FlipsBoardProps {
 }
 
 export const FlipsBoard: React.FC<FlipsBoardProps> = ({ gameState, myPlayerId, dispatch, onLeaveGame }) => {
-  const { status, targetScore, players, playerOrder, currentPlayerIndex, winnerId, lastFlipResult, chatMessages } = gameState;
-  // Derive logs from chatMessages
-  const logs = chatMessages
-    .filter((m) => m.isSystem)
-    .flatMap((m, index) => [
-      <span key={`msg-${index}`}>{m.text}</span>,
-      '---'
-    ]);
+  const { status, targetScore, players, winnerId, lastFlipResult } = gameState;
 
-  // Base players for framework
-  const basePlayers: BasePlayer[] = playerOrder.map((id) => players[id]);
-
-  const currentPlayerId = playerOrder[currentPlayerIndex];
-  const isMyTurn = currentPlayerId === myPlayerId;
+  const isMyTurn = gameState.playerOrder[gameState.currentPlayerIndex] === myPlayerId;
   const iAmWinner = winnerId === myPlayerId;
 
 
 
-  const { handleStart, handleAddBot, handleSendMessage } = useGameController(dispatch as any);
+
 
   const handleFlip = () => {
     if (!isMyTurn || status !== 'Playing') return;
@@ -111,7 +100,7 @@ export const FlipsBoard: React.FC<FlipsBoardProps> = ({ gameState, myPlayerId, d
 
   const renderStats = () => {
     const maxTurns = Math.max(1, ...Object.values(players).map(p => p.pointsHistory.length - 1));
-    const sortedPlayers = [...playerOrder].sort((a, b) => players[b].score - players[a].score);
+    const sortedPlayers = [...gameState.playerOrder].sort((a, b) => players[b].score - players[a].score);
     
     // Fixed width to fit inside the 800px modal without scrolling
     const svgWidth = 720;
@@ -158,7 +147,7 @@ export const FlipsBoard: React.FC<FlipsBoardProps> = ({ gameState, myPlayerId, d
               <line x1="0" y1={svgHeight} x2={svgWidth} y2={svgHeight} stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
               <line x1="0" y1="0" x2="0" y2={svgHeight} stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
               
-              {playerOrder.map(id => {
+              {gameState.playerOrder.map(id => {
                 const p = players[id];
                 const color = p.color || 'white';
                 
@@ -192,21 +181,16 @@ export const FlipsBoard: React.FC<FlipsBoardProps> = ({ gameState, myPlayerId, d
   return (
     <GameLayout
       gameName="Flips"
-      status={status}
-      players={basePlayers}
-      currentPlayerId={currentPlayerId}
-      chatMessages={chatMessages}
-      onSendMessage={(msg) => handleSendMessage(msg, players[myPlayerId]?.name || 'You', players[myPlayerId]?.color)}
-      onStartGame={status === 'Lobby' ? handleStart : undefined}
-      onAddBot={status === 'Lobby' ? handleAddBot : undefined}
-      onNewGame={() => dispatch({ type: 'NEW_GAME' })}
+      gameState={gameState}
+      myPlayerId={myPlayerId}
+      dispatch={dispatch}
       onLeaveGame={onLeaveGame}
       helpText="Flips: First to target points wins! Click FLIP COIN to test your luck."
-      renderSettings={renderSettings}
-      renderGraphics={renderGraphics}
+      settings={renderSettings()}
       renderGameSpecificPlayerDetails={renderPlayerDetails}
-      renderLog={() => <GameLog logs={logs} />}
       renderGameSpecificStats={renderStats}
-    />
+    >
+      {renderGraphics()}
+    </GameLayout>
   );
 };
