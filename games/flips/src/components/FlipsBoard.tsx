@@ -140,25 +140,25 @@ export const FlipsBoard: React.FC = () => {
               <line x1="0" y1={svgHeight} x2={svgWidth} y2={svgHeight} stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
               <line x1="0" y1="0" x2="0" y2={svgHeight} stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
               
-              {gameState.playerOrder.map(id => {
+              {gameState.playerOrder.map((id, pIndex) => {
                 const p = players[id];
                 const color = p.color || 'white';
+                
+                // Add a slight vertical offset based on player index to prevent overlapping lines
+                const yOffset = (pIndex - gameState.playerOrder.length / 2) * 3;
                 
                 // Construct polyline points using absolute pixels
                 const points = p.pointsHistory.map((pts, idx) => {
                   const x = (idx / maxTurns) * svgWidth;
-                  const y = svgHeight - ((pts / targetScore) * svgHeight);
+                  // Clamp y to keep it strictly inside the SVG box despite the offset
+                  const base_y = svgHeight - ((pts / targetScore) * svgHeight);
+                  const y = Math.min(Math.max(0, base_y + yOffset), svgHeight);
                   return `${x},${y}`;
                 }).join(' ');
 
                 return (
                   <g key={id}>
                     <polyline fill="none" stroke={color} strokeWidth="4" strokeLinejoin="round" points={points} />
-                    {p.pointsHistory.map((pts, idx) => {
-                      const x = (idx / maxTurns) * svgWidth;
-                      const y = svgHeight - ((pts / targetScore) * svgHeight);
-                      return <circle key={idx} cx={x} cy={y} r="5" fill={color} />;
-                    })}
                   </g>
                 );
               })}
