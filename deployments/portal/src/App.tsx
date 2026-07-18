@@ -46,13 +46,14 @@ function GameLobbyWrapper() {
     navigate(`/${gameType}/${gameId}`, { state: { username } });
   };
 
-  const formattedTitle = gameType === 'king-of-tokyo' ? 'King of Tokyo Lobby' : 'Flips Lobby';
+  const formattedTitle = gameType === 'king-of-tokyo' ? 'King of Tokyo' : 'Flips';
 
   return (
     <Lobby 
       title={formattedTitle}
       onCreateGame={handleCreateGame}
       onJoinGame={handleJoinGame}
+      onGoHome={() => navigate('/')}
       pendingGames={gameType === 'flips' ? [
         { id: "FLIP-111", gameType: "Flips", playersCount: 1, status: "Lobby" }
       ] : [

@@ -20,6 +20,10 @@ export interface KotPlayer extends BasePlayer {
 export interface KotState extends BaseGameState<KotPlayer> {
   dice: KotDice[];
   rollCount: number;
+  settings: {
+    maxHealth: number;
+    maxVp: number;
+  };
 }
 
 export type KotAction = 
@@ -28,10 +32,15 @@ export type KotAction =
   | { type: 'RESOLVE_DICE', payload: { playerId: string } }
   | { type: 'BOT_PLAY', payload: { playerId: string } }
   | { type: 'YIELD_TOKYO', payload: { playerId: string, attackerId: string } }
-  | { type: 'STAY_IN_TOKYO', payload: { playerId: string } };
+  | { type: 'STAY_IN_TOKYO', payload: { playerId: string } }
+  | { type: 'UPDATE_SETTINGS', payload: { maxHealth: number, maxVp: number } };
 
 export const initialKotState: KotState = {
   ...(baseInitialState as unknown as KotState),
+  settings: {
+    maxHealth: 10,
+    maxVp: 20
+  },
   dice: [
     { id: 'd1', value: '1', kept: false },
     { id: 'd2', value: '2', kept: false },
@@ -85,7 +94,7 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
             ...newState.players,
             [playerId]: {
               ...(basePlayer as any),
-              health: 10,
+              health: newState.settings?.maxHealth || 10,
               vp: 0,
               energy: 0,
               location: 'Outside'
@@ -109,7 +118,7 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
       Object.keys(newState.players).forEach(pId => {
         resetPlayers[pId] = { 
           ...newState.players[pId], 
-          health: 10,
+          health: newState.settings?.maxHealth || 10,
           vp: 0,
           energy: 0,
           location: 'Outside'
@@ -127,6 +136,17 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
   }
 
   switch (action.type) {
+    case 'UPDATE_SETTINGS': {
+      if (state.status !== 'Lobby') return state;
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          maxHealth: action.payload.maxHealth,
+          maxVp: action.payload.maxVp
+        }
+      };
+    }
     case 'ROLL_DICE': {
       if (state.status !== 'Playing') return state;
       if (state.playerOrder[state.currentPlayerIndex] !== action.payload.playerId) return state;
@@ -187,7 +207,8 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
 
       // Healing (only if Outside Tokyo)
       if (outcomeMap['Heart'] && player.location === 'Outside') {
-        newHealth = Math.min(10, newHealth + outcomeMap['Heart']);
+        const maxHealth = state.settings?.maxHealth || 10;
+        newHealth = Math.min(maxHealth, newHealth + outcomeMap['Heart']);
       }
 
       // VPs for numbers

@@ -14,6 +14,7 @@ export interface LobbyProps {
   pendingGames?: PendingGame[];
   onCreateGame: (username: string) => void;
   onJoinGame: (gameId: string, username: string) => void;
+  onGoHome?: () => void;
 }
 
 export const Lobby: React.FC<LobbyProps> = ({
@@ -21,7 +22,8 @@ export const Lobby: React.FC<LobbyProps> = ({
   initialUsername = "",
   pendingGames = [],
   onCreateGame,
-  onJoinGame
+  onJoinGame,
+  onGoHome
 }) => {
   const [username, setUsername] = useState(() => {
     return localStorage.getItem('boardgames_username') || initialUsername;
@@ -45,6 +47,11 @@ export const Lobby: React.FC<LobbyProps> = ({
   return (
     <div className="lobby-container">
       <h1 className="lobby-title">{title}</h1>
+      {onGoHome && (
+        <button className="btn secondary" onClick={onGoHome} style={{ marginBottom: '20px' }}>
+          ← Back to Games Menu
+        </button>
+      )}
       
       <div className="lobby-card glass-panel">
         <input 

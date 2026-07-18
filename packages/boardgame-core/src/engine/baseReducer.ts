@@ -25,13 +25,17 @@ export function baseReducer<T extends BaseGameState>(state: T, action: BaseActio
       const newPlayerOrder = [...state.playerOrder, playerId];
       const color = PLAYER_COLORS[newPlayerOrder.length % PLAYER_COLORS.length];
       
+      const newPlayer: any = { id: playerId, name, isBot, color };
+      if (botStrategy) newPlayer.botStrategy = botStrategy;
+      
       return {
         ...state,
         players: {
           ...state.players,
-          [playerId]: { id: playerId, name, isBot, botStrategy, color }
+          [playerId]: newPlayer
         },
-        playerOrder: newPlayerOrder
+        playerOrder: newPlayerOrder,
+        logs: [...state.logs, `${name} joined the game`]
       };
     }
     case 'START_GAME': {

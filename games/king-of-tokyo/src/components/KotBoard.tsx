@@ -51,9 +51,53 @@ const AnimatedCounter = ({ value, icon, color }: { value: number, icon: string, 
   );
 };
 
+const SettingsPanel = ({ settings, dispatch, status }: any) => {
+  const [maxHealth, setMaxHealth] = React.useState(settings?.maxHealth || 10);
+  const [maxVp, setMaxVp] = React.useState(settings?.maxVp || 20);
+
+  const handleSave = () => {
+    dispatch({ type: 'UPDATE_SETTINGS', payload: { maxHealth: Number(maxHealth), maxVp: Number(maxVp) } });
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+      <div>
+        <label style={{ display: 'block', marginBottom: '5px' }}>Max Health / Initial Health</label>
+        <input 
+          type="number" 
+          value={maxHealth} 
+          onChange={e => setMaxHealth(e.target.value)}
+          disabled={status !== 'Lobby'}
+          className="modern-input"
+          style={{ width: '100%' }}
+        />
+      </div>
+      <div>
+        <label style={{ display: 'block', marginBottom: '5px' }}>VPs to Win</label>
+        <input 
+          type="number" 
+          value={maxVp} 
+          onChange={e => setMaxVp(e.target.value)}
+          disabled={status !== 'Lobby'}
+          className="modern-input"
+          style={{ width: '100%' }}
+        />
+      </div>
+      {status === 'Lobby' && (
+        <button className="btn primary" onClick={handleSave} style={{ marginTop: '10px' }}>
+          Save Settings
+        </button>
+      )}
+      {status !== 'Lobby' && (
+        <p style={{ color: 'gray', fontSize: '12px' }}>Settings can only be changed in the Lobby.</p>
+      )}
+    </div>
+  );
+};
+
 export const KotBoard: React.FC = () => {
   const { gameState, myPlayerId, dispatch } = useGameContext<KotState, KotAction>();
-  const { status, players, dice, rollCount, prompt, playerOrder, currentPlayerIndex } = gameState;
+  const { status, players, dice, rollCount, prompt, playerOrder, currentPlayerIndex, settings } = gameState;
 
   const [keptDiceIds, setKeptDiceIds] = React.useState<string[]>([]);
   const isMyTurn = playerOrder[currentPlayerIndex] === myPlayerId;
@@ -102,7 +146,7 @@ export const KotBoard: React.FC = () => {
           <h3 style={{ margin: '0 0 15px 0' }}>{prompt.text}</h3>
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
             {prompt.options.map((opt, i) => (
-              <button key={i} className="btn primary" onClick={() => dispatch(opt.action)}>
+              <button key={i} className="btn primary" onClick={() => dispatch(opt.action as KotAction)}>
                 {opt.label}
               </button>
             ))}
@@ -222,9 +266,10 @@ export const KotBoard: React.FC = () => {
   return (
     <GameLayout
       gameName="King of Tokyo"
-      helpText="Roll dice up to 3 times. Reach 20 VP or be the last monster standing!"
+      helpText={`Roll dice up to 3 times. Reach ${settings?.maxVp || 20} VP or be the last monster standing!`}
       helpUrl="https://en.wikipedia.org/wiki/King_of_Tokyo"
       renderGameSpecificPlayerDetails={renderPlayerDetails}
+      settings={<SettingsPanel settings={settings} dispatch={dispatch} status={status} />}
     >
       {renderGraphics()}
     </GameLayout>
