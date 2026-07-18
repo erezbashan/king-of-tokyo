@@ -15,6 +15,11 @@ export interface ChatMessage {
   isSystem?: boolean;
 }
 
+export interface ScheduledAction {
+  delayMs: number;
+  action: any;
+}
+
 export interface BaseGameState<TPlayer extends BasePlayer = BasePlayer> {
   status: GameStatus;
   players: Record<string, TPlayer>;
@@ -23,6 +28,7 @@ export interface BaseGameState<TPlayer extends BasePlayer = BasePlayer> {
   winnerId: string | null;
   chatMessages: ChatMessage[];
   logs: string[];
+  actionQueue?: ScheduledAction[];
 }
 
 export type BaseAction = 

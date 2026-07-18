@@ -18,7 +18,7 @@ function GameSelector() {
           <p>A simple test game</p>
         </div>
         <div 
-          onClick={() => navigate('/kot')}
+          onClick={() => navigate('/king-of-tokyo')}
           style={{ background: 'rgba(255,255,255,0.1)', padding: '30px', borderRadius: '16px', cursor: 'pointer', textAlign: 'center', minWidth: '200px' }}
         >
           <h2>King of Tokyo</h2>
@@ -44,7 +44,7 @@ function GameLobbyWrapper() {
     navigate(`/${gameType}/${gameId}`, { state: { username } });
   };
 
-  const formattedTitle = gameType === 'kot' ? 'King of Tokyo Lobby' : 'Flips Lobby';
+  const formattedTitle = gameType === 'king-of-tokyo' ? 'King of Tokyo Lobby' : 'Flips Lobby';
 
   return (
     <Lobby 

@@ -26,6 +26,28 @@ export const initialFlipsState: FlipsState = {
   lastFlipResult: null
 };
 
+function queueBotActionsIfNeeded(state: FlipsState): FlipsState {
+  if (state.status !== 'Playing') return state;
+  const currentPlayerId = state.playerOrder[state.currentPlayerIndex];
+  const player = state.players[currentPlayerId];
+  if (!player?.isBot) return state;
+
+  let newActionQueue = state.actionQueue || [];
+  
+  // Bot does the flip
+  newActionQueue = [...newActionQueue, { delayMs: 1500, action: { type: 'FLIP_COIN', payload: { playerId: currentPlayerId } } }];
+  
+  // Random chatter logic
+  const humanSpoke = state.chatMessages.some((m: any) => !state.players[m.sender]?.isBot);
+  if (!humanSpoke && Math.random() > 0.7) {
+    const msgs = ["I'm feeling lucky!", "Tails never fails...", "Beep boop, calculating flip...", "You humans stand no chance!"];
+    const msg = msgs[Math.floor(Math.random() * msgs.length)];
+    newActionQueue = [...newActionQueue, { delayMs: 0, action: { type: 'SEND_CHAT_MESSAGE', payload: { sender: player.name, text: msg, color: player.color } } }];
+  }
+
+  return { ...state, actionQueue: newActionQueue };
+}
+
 export function flipsReducer(state: FlipsState, action: FlipsAction): FlipsState {
   // Pass to base reducer first to handle JOIN_GAME, START_GAME, NEW_GAME, SEND_CHAT_MESSAGE
   let newState = baseReducer(state, action) as FlipsState;
@@ -52,9 +74,10 @@ export function flipsReducer(state: FlipsState, action: FlipsAction): FlipsState
       }
     }
     
-    // If game started, clear the last flip result graphic
+    // If game started, clear the last flip result graphic and trigger bot if needed
     if (action.type === 'START_GAME') {
       newState = { ...newState, lastFlipResult: null };
+      newState = queueBotActionsIfNeeded(newState);
     }
     
     // If new game, reset player points
@@ -119,7 +142,7 @@ export function flipsReducer(state: FlipsState, action: FlipsAction): FlipsState
 
       const logMessage = `${player.name} flipped ${isHeads ? 'Heads' : 'Tails'}!`;
 
-      return {
+      return queueBotActionsIfNeeded({
         ...state,
         players: updatedPlayers,
         status: newStatus,
@@ -127,7 +150,7 @@ export function flipsReducer(state: FlipsState, action: FlipsAction): FlipsState
         currentPlayerIndex: (state.currentPlayerIndex + 1) % state.playerOrder.length,
         lastFlipResult: { playerId: action.payload.playerId, isHeads },
         logs: [...state.logs, logMessage]
-      };
+      });
     }
     default:
       return state;

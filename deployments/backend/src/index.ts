@@ -69,40 +69,34 @@ export const onGameUpdated = onDocumentUpdated("games/{gameId}", async (event) =
   const data = event.data?.after.data();
   if (!data) return;
   const state = data.state;
-  if (!state || state.status !== 'Playing') return;
+  if (!state || !state.actionQueue || state.actionQueue.length === 0) return;
 
-  const currentPlayerId = state.playerOrder[state.currentPlayerIndex];
-  const player = state.players[currentPlayerId];
-  if (!player || !player.isBot) return;
+  const scheduledAction = state.actionQueue[0];
 
-  // Wait 1.5 seconds to simulate thinking
-  await new Promise(r => setTimeout(r, 1500));
+  // Wait the requested amount of time
+  if (scheduledAction.delayMs > 0) {
+    await new Promise(r => setTimeout(r, scheduledAction.delayMs));
+  }
 
   const gameRef = event.data!.after.ref;
   await db.runTransaction(async (transaction) => {
     const doc = await transaction.get(gameRef);
     if (!doc.exists) return;
     const gameDoc = doc.data()!;
-    const curState = gameDoc.state;
+    let curState = gameDoc.state;
     
-    // Check if it's still this bot's turn (in case someone manually skipped or it already ran)
-    if (curState.status !== 'Playing' || curState.playerOrder[curState.currentPlayerIndex] !== currentPlayerId) return;
+    // Safety check: Ensure the queue hasn't changed/emptied while sleeping
+    if (!curState.actionQueue || curState.actionQueue.length === 0) return;
+
+    // Pop the action
+    const actionToRun = curState.actionQueue[0].action;
+    curState.actionQueue = curState.actionQueue.slice(1);
 
     let newState;
     if (data.gameType === 'flips') {
-      const action = { type: 'FLIP_COIN', payload: { playerId: currentPlayerId } } as any;
-      newState = flipsReducer(curState, action);
-      
-      // Random chatter logic
-      const humanSpoke = curState.chatMessages.some((m: any) => !curState.players[m.sender]?.isBot);
-      if (!humanSpoke && Math.random() > 0.7) {
-        const msgs = ["I'm feeling lucky!", "Tails never fails...", "Beep boop, calculating flip...", "You humans stand no chance!"];
-        const msg = msgs[Math.floor(Math.random() * msgs.length)];
-        const chatAction = { type: 'SEND_CHAT_MESSAGE', payload: { sender: player.name, text: msg, color: player.color } };
-        newState = flipsReducer(newState, chatAction as any);
-      }
+      newState = flipsReducer(curState, actionToRun);
     } else {
-      return; // Unsupported game type
+      return; // Add other game reducers here later
     }
 
     transaction.update(gameRef, { state: newState });
