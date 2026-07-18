@@ -2,7 +2,10 @@ import { Routes, Route, useNavigate, useParams, useLocation } from 'react-router
 import { Lobby } from '@erez/boardgame-core';
 import { FlipsBoard } from '@erez/flips';
 import type { FlipsState, FlipsAction } from '@erez/flips';
+import { KotBoard } from '@erez/king-of-tokyo';
+import type { KotState, KotAction } from '@erez/king-of-tokyo';
 import { useMultiplayerGame } from './hooks/useMultiplayerGame';
+import { GameProvider } from '@erez/boardgame-core';
 
 function GameSelector() {
   const navigate = useNavigate();
@@ -88,6 +91,27 @@ function ActiveFlipsGame({ gameId, username }: { gameId: string, username: strin
   );
 }
 
+function ActiveKotGame({ gameId, username }: { gameId: string, username: string }) {
+  const { gameState, myPlayerId, dispatchToBackend, error } = useMultiplayerGame<KotState, KotAction>(gameId, 'king-of-tokyo', username);
+  const navigate = useNavigate();
+
+  if (error) return <div style={{ color: 'white', padding: '40px' }}>Error: {error}</div>;
+  if (!gameState || !myPlayerId) return <div style={{ color: 'white', padding: '40px' }}>Loading game from Firebase...</div>;
+
+  const value = {
+    gameState,
+    myPlayerId,
+    dispatch: dispatchToBackend as any,
+    onLeaveGame: () => navigate('/king-of-tokyo')
+  };
+
+  return (
+    <GameProvider value={value}>
+      <KotBoard />
+    </GameProvider>
+  );
+}
+
 function ActiveGameWrapper() {
   const { gameType, gameId } = useParams();
   const location = useLocation();
@@ -96,6 +120,10 @@ function ActiveGameWrapper() {
 
   if (gameType === 'flips') {
     return <ActiveFlipsGame gameId={gameId!} username={username} />;
+  }
+  
+  if (gameType === 'king-of-tokyo') {
+    return <ActiveKotGame gameId={gameId!} username={username} />;
   }
 
   return (

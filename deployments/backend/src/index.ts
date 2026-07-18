@@ -6,6 +6,7 @@ import { onDocumentUpdated } from "firebase-functions/v2/firestore";
 import * as admin from "firebase-admin";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { flipsReducer, initialFlipsState, FlipsAction } from "@erez/flips/dist/engine/reducer";
+import { kingOfTokyoReducer, initialKotState } from "@erez/king-of-tokyo/dist/engine/reducer";
 
 admin.initializeApp();
 const db = getFirestore();
@@ -54,7 +55,11 @@ export const dispatchAction = onCall(async (request) => {
     let newState;
 
     if (gameType === 'flips') {
+      if (!gameDoc.state) gameDoc.state = initialFlipsState;
       newState = flipsReducer(gameDoc.state, action);
+    } else if (gameType === 'king-of-tokyo') {
+      if (!gameDoc.state) gameDoc.state = initialKotState;
+      newState = kingOfTokyoReducer(gameDoc.state, action as any);
     } else {
       throw new HttpsError('invalid-argument', 'Unsupported game type');
     }
@@ -95,6 +100,8 @@ export const onGameUpdated = onDocumentUpdated("games/{gameId}", async (event) =
     let newState;
     if (data.gameType === 'flips') {
       newState = flipsReducer(curState, actionToRun);
+    } else if (data.gameType === 'king-of-tokyo') {
+      newState = kingOfTokyoReducer(curState, actionToRun);
     } else {
       return; // Add other game reducers here later
     }
