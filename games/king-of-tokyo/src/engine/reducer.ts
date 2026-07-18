@@ -495,8 +495,14 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
             // Attack Tokyo players
             const tokyoPlayers = Object.values(finalState.players).filter(p => p.location === 'TokyoCity' && p.health > 0);
             if (tokyoPlayers.length === 0) {
-              finalState.players[player.id].location = 'TokyoCity';
-              finalState.players[player.id].vp += 1;
+              finalState.players = {
+                ...finalState.players,
+                [player.id]: {
+                  ...finalState.players[player.id],
+                  location: 'TokyoCity',
+                  vp: finalState.players[player.id].vp + 1
+                }
+              };
               finalState.logs.push(`${player.name} entered Tokyo and gained 1 ⭐!`);
             } else {
               tokyoPlayers.forEach(tp => {
@@ -505,11 +511,29 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
                 const actualDmg = dmgObj.damage;
 
                 if (actualDmg > 0) {
-                  finalState.players[tp.id].health = Math.max(0, finalState.players[tp.id].health - actualDmg);
+                  finalState.players = {
+                    ...finalState.players,
+                    [tp.id]: {
+                      ...finalState.players[tp.id],
+                      health: Math.max(0, finalState.players[tp.id].health - actualDmg)
+                    }
+                  };
                   damagedSomeone = true;
-                  finalState.players[player.id].stats.damageDealt += Math.min(tp.health, actualDmg);
+                  finalState.players[player.id] = {
+                    ...finalState.players[player.id],
+                    stats: {
+                      ...finalState.players[player.id].stats,
+                      damageDealt: finalState.players[player.id].stats.damageDealt + Math.min(tp.health, actualDmg)
+                    }
+                  };
                   if (finalState.players[tp.id].health === 0) {
-                    finalState.players[player.id].stats.playersKilled += 1;
+                    finalState.players[player.id] = {
+                      ...finalState.players[player.id],
+                      stats: {
+                        ...finalState.players[player.id].stats,
+                        playersKilled: finalState.players[player.id].stats.playersKilled + 1
+                      }
+                    };
                     finalState.logs.push(`💀 ${tp.name} was eliminated!`);
                   }
                 }
@@ -530,8 +554,14 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
                 } as any;
                 } else if (!tokyoPlayers.find(tp => finalState.players[tp.id].health > 0)) {
                   // All Tokyo players died, automatically enter Tokyo
-                  finalState.players[player.id].location = 'TokyoCity';
-                  finalState.players[player.id].vp += 1;
+                  finalState.players = {
+                    ...finalState.players,
+                    [player.id]: {
+                      ...finalState.players[player.id],
+                      location: 'TokyoCity',
+                      vp: finalState.players[player.id].vp + 1
+                    }
+                  };
                   finalState.logs.push(`${player.name} entered empty Tokyo and gained 1 ⭐!`);
                 }
               }

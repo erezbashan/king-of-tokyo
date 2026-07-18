@@ -164,17 +164,26 @@ export const KotBoard: React.FC = () => {
   const [keptDiceIds, setKeptDiceIds] = React.useState<string[]>([]);
   const isMyTurn = playerOrder[currentPlayerIndex] === myPlayerId;
 
-  const [highlightedCards, setHighlightedCards] = React.useState<string[]>([]);
+  const [highlightedCards, setHighlightedCards] = React.useState<{cardId: string, playerId: string}[]>([]);
   const prevLogsLength = React.useRef(gameState.logs?.length || 0);
 
   React.useEffect(() => {
     if (gameState.logs && gameState.logs.length > prevLogsLength.current) {
       const newLogs = gameState.logs.slice(prevLogsLength.current);
-      const highlighted: string[] = [];
+      const highlighted: {cardId: string, playerId: string}[] = [];
       newLogs.forEach(log => {
         ALL_CARD_IDS.forEach(cId => {
           if (log.includes(CARD_REGISTRY[cId].name)) {
-            highlighted.push(cId);
+            let foundPlayerId: string | null = null;
+            for (const pId of gameState.playerOrder || []) {
+              if (log.includes(gameState.players[pId]?.name)) {
+                foundPlayerId = pId;
+                break;
+              }
+            }
+            if (foundPlayerId) {
+              highlighted.push({ cardId: cId, playerId: foundPlayerId });
+            }
           }
         });
       });
@@ -464,7 +473,7 @@ export const KotBoard: React.FC = () => {
         {p.cards && p.cards.length > 0 && (
           <div style={{ display: 'flex', gap: '5px', marginTop: '5px', flexWrap: 'wrap' }}>
             {p.cards.map((cId, i) => {
-               const isHighlighted = highlightedCards.includes(cId);
+               const isHighlighted = highlightedCards.some(hc => hc.cardId === cId && hc.playerId === p.id);
                return (
                  <div 
                    key={i} 

@@ -47,7 +47,7 @@ export const BackgroundDweller: KotCard = {
           ...state,
           dice: newDice,
           prompt: undefined,
-          logs: [...state.logs, `🎲 Background Dweller rerolled a 3️⃣!`]
+          logs: [...state.logs, `🎲 ${state.players[payload.playerId].name}'s Background Dweller rerolled a 3️⃣!`]
         };
         
         // Re-evaluate if there's still a 3

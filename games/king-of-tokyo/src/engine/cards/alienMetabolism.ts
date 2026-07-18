@@ -13,7 +13,7 @@ export const AlienMetabolism: KotCard = {
       if (event === 'BUY_CARD') {
         return {
           ...state,
-          logs: [...state.logs, `Alien Metabolism reduced the cost by 1 ⚡`]
+          logs: [...state.logs, `⚡ ${state.players[payload.playerId].name}'s Alien Metabolism reduced the cost by 1`]
         };
       }
     }
