@@ -2,6 +2,55 @@ import React from 'react';
 import type { KotState, KotAction } from '../engine/reducer';
 import { GameLayout, useGameContext } from '@erez/boardgame-core';
 
+const styles = `
+  @keyframes dice-roll {
+    0% { transform: rotate(0deg) scale(1); }
+    50% { transform: rotate(180deg) scale(1.2); }
+    100% { transform: rotate(360deg) scale(1); }
+  }
+  .dice-rolling {
+    animation: dice-roll 0.5s ease-in-out;
+  }
+  @keyframes pulse-green {
+    0% { transform: scale(1); color: #4ade80; }
+    50% { transform: scale(1.8); color: #4ade80; }
+    100% { transform: scale(1); color: inherit; }
+  }
+  @keyframes pulse-red {
+    0% { transform: scale(1); color: #ef4444; }
+    50% { transform: scale(1.8); color: #ef4444; }
+    100% { transform: scale(1); color: inherit; }
+  }
+  .pulse-green { animation: pulse-green 0.8s ease-out; }
+  .pulse-red { animation: pulse-red 0.8s ease-out; }
+`;
+
+const AnimatedCounter = ({ value, icon, color }: { value: number, icon: string, color: string }) => {
+  const prevValue = React.useRef(value);
+  const [animClass, setAnimClass] = React.useState('');
+
+  React.useEffect(() => {
+    if (value > prevValue.current) {
+      setAnimClass('pulse-green');
+      const timer = setTimeout(() => setAnimClass(''), 1000);
+      prevValue.current = value;
+      return () => clearTimeout(timer);
+    } else if (value < prevValue.current) {
+      setAnimClass('pulse-red');
+      const timer = setTimeout(() => setAnimClass(''), 1000);
+      prevValue.current = value;
+      return () => clearTimeout(timer);
+    }
+  }, [value]);
+
+  return (
+    <div style={{ color, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
+      <span>{icon}</span>
+      <span className={animClass} style={{ display: 'inline-block', transition: 'all 0.3s' }}>{value}</span>
+    </div>
+  );
+};
+
 export const KotBoard: React.FC = () => {
   const { gameState, myPlayerId, dispatch } = useGameContext<KotState, KotAction>();
   const { status, players, dice, rollCount } = gameState;
@@ -13,9 +62,26 @@ export const KotBoard: React.FC = () => {
     dispatch({ type: 'ROLL_DICE', payload: { playerId: myPlayerId } });
   };
 
+  const handleResolve = () => {
+    if (!isMyTurn || status !== 'Playing' || rollCount === 0) return;
+    dispatch({ type: 'RESOLVE_DICE', payload: { playerId: myPlayerId } });
+  };
+
   const toggleKeep = (diceId: string) => {
     if (!isMyTurn || status !== 'Playing' || rollCount === 0 || rollCount >= 3) return;
     dispatch({ type: 'TOGGLE_KEEP_DICE', payload: { playerId: myPlayerId, diceId } });
+  };
+
+  const getDiceFace = (val: string) => {
+    switch (val) {
+      case 'Heart': return <span style={{color: '#ef4444', textShadow: '0 0 5px rgba(0,0,0,0.5)'}}>❤️</span>;
+      case 'Energy': return <span style={{color: '#06b6d4', textShadow: '0 0 5px rgba(0,0,0,0.5)'}}>⚡</span>;
+      case 'Smash': return <span style={{color: '#f97316', textShadow: '0 0 5px rgba(0,0,0,0.5)'}}>💥</span>;
+      case '1': return <span style={{color: 'white', textShadow: '0 0 5px rgba(0,0,0,0.5)'}}>1</span>;
+      case '2': return <span style={{color: 'white', textShadow: '0 0 5px rgba(0,0,0,0.5)'}}>2</span>;
+      case '3': return <span style={{color: 'white', textShadow: '0 0 5px rgba(0,0,0,0.5)'}}>3</span>;
+      default: return '?';
+    }
   };
 
   const renderGraphics = () => {
@@ -23,12 +89,14 @@ export const KotBoard: React.FC = () => {
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '20px' }}>
+        <style dangerouslySetInnerHTML={{ __html: styles }} />
         <h2>Dice (Rolls left: {3 - rollCount})</h2>
         <div style={{ display: 'flex', gap: '15px', marginBottom: '40px' }}>
           {dice.map((d) => (
             <div 
-              key={d.id} 
+              key={d.kept ? d.id : `dice-${d.id}-${rollCount}`}
               onClick={() => toggleKeep(d.id)}
+              className={!d.kept && rollCount > 0 ? 'dice-rolling' : ''}
               style={{
                 width: '80px',
                 height: '80px',
@@ -38,35 +106,61 @@ export const KotBoard: React.FC = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '20px',
+                fontSize: '36px',
                 fontWeight: 'bold',
-                color: 'white',
                 cursor: (isMyTurn && rollCount > 0 && rollCount < 3) ? 'pointer' : 'default',
                 boxShadow: d.kept ? '0 0 15px rgba(74, 222, 128, 0.5)' : 'none',
-                opacity: rollCount === 0 ? 0.3 : 1
+                opacity: rollCount === 0 ? 0.3 : 1,
+                position: 'relative'
               }}
             >
-              {rollCount > 0 ? d.value : '?'}
+              {rollCount > 0 ? getDiceFace(d.value) : '?'}
+              {d.kept && <div style={{position: 'absolute', top: '-10px', right: '-10px', fontSize: '20px'}}>🔒</div>}
             </div>
           ))}
         </div>
 
         {status === 'Playing' && (
-          <button 
-            className="btn primary"
-            onClick={handleRoll} 
-            disabled={!isMyTurn || rollCount >= 3}
-            style={{ 
-              padding: '20px 40px', 
-              fontSize: '24px', 
-              cursor: isMyTurn && rollCount < 3 ? 'pointer' : 'not-allowed',
-              opacity: isMyTurn && rollCount < 3 ? 1 : 0.5,
-              borderRadius: '12px',
-              boxShadow: isMyTurn && rollCount < 3 ? '0 0 20px rgba(59, 130, 246, 0.5)' : 'none'
-            }}
-          >
-            {isMyTurn ? (rollCount === 0 ? "🎲 ROLL DICE" : `🎲 REROLL DICE`) : "Waiting for turn..."}
-          </button>
+          <div style={{ display: 'flex', gap: '20px' }}>
+            {rollCount < 3 && (
+              <button 
+                className="btn primary"
+                onClick={handleRoll} 
+                disabled={!isMyTurn}
+                style={{ 
+                  padding: '20px 40px', 
+                  fontSize: '24px', 
+                  cursor: isMyTurn ? 'pointer' : 'not-allowed',
+                  opacity: isMyTurn ? 1 : 0.5,
+                  borderRadius: '12px',
+                  boxShadow: isMyTurn ? '0 0 20px rgba(59, 130, 246, 0.5)' : 'none'
+                }}
+              >
+                {isMyTurn ? (rollCount === 0 ? "🎲 ROLL DICE" : `🎲 REROLL DICE`) : "Waiting for turn..."}
+              </button>
+            )}
+            
+            {rollCount > 0 && (
+              <button 
+                className="btn"
+                onClick={handleResolve} 
+                disabled={!isMyTurn}
+                style={{ 
+                  padding: '20px 40px', 
+                  fontSize: '24px', 
+                  cursor: isMyTurn ? 'pointer' : 'not-allowed',
+                  opacity: isMyTurn ? 1 : 0.5,
+                  borderRadius: '12px',
+                  background: '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  boxShadow: isMyTurn ? '0 0 20px rgba(16, 185, 129, 0.5)' : 'none'
+                }}
+              >
+                ✅ RESOLVE DICE
+              </button>
+            )}
+          </div>
         )}
       </div>
     );
@@ -76,9 +170,9 @@ export const KotBoard: React.FC = () => {
     const p = players[playerId];
     return (
       <div style={{ marginTop: '10px', textAlign: 'center', display: 'flex', justifyContent: 'center', gap: '15px' }}>
-        <div style={{ color: '#ef4444', fontWeight: 'bold' }}>❤️ {p.health}</div>
-        <div style={{ color: '#eab308', fontWeight: 'bold' }}>⭐ {p.vp}</div>
-        <div style={{ color: '#3b82f6', fontWeight: 'bold' }}>⚡ {p.energy}</div>
+        <AnimatedCounter value={p.health} icon="❤️" color="#ef4444" />
+        <AnimatedCounter value={p.vp} icon="⭐" color="#eab308" />
+        <AnimatedCounter value={p.energy} icon="⚡" color="#06b6d4" />
         {p.location === 'TokyoCity' && (
           <div style={{ color: '#a855f7', fontWeight: 'bold', border: '1px solid #a855f7', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>
             TOKYO

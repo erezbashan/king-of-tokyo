@@ -25,7 +25,8 @@ export interface KotState extends BaseGameState<KotPlayer> {
 export type KotAction = 
   | BaseAction
   | { type: 'ROLL_DICE', payload: { playerId: string } }
-  | { type: 'TOGGLE_KEEP_DICE', payload: { playerId: string, diceId: string } };
+  | { type: 'TOGGLE_KEEP_DICE', payload: { playerId: string, diceId: string } }
+  | { type: 'RESOLVE_DICE', payload: { playerId: string } };
 
 export const initialKotState: KotState = {
   ...(baseInitialState as unknown as KotState),
@@ -48,17 +49,23 @@ function queueBotActionsIfNeeded(state: KotState): KotState {
   const player = state.players[currentPlayerId];
   if (!player?.isBot) return state;
 
-  // Bot logic: just roll dice automatically for MVP
-  // Real logic will require deciding which dice to keep!
   let newActionQueue = state.actionQueue || [];
   
-  if (state.rollCount === 0) {
+  if (state.rollCount < 3) {
     newActionQueue = [...newActionQueue, { delayMs: 1500, action: { type: 'ROLL_DICE', payload: { playerId: currentPlayerId } } }];
+  } else {
+    newActionQueue = [...newActionQueue, { delayMs: 1500, action: { type: 'RESOLVE_DICE', payload: { playerId: currentPlayerId } } }];
   }
 
   const botState = { ...state, actionQueue: newActionQueue };
-  const msgs = ["RAWR!", "Tokyo will be MINE!", "Feel my wrath!", "Smash everything!"];
-  return withBotChatter(botState, currentPlayerId, msgs);
+  
+  // Only chatter on first roll
+  if (state.rollCount === 0) {
+    const msgs = ["RAWR!", "Tokyo will be MINE!", "Feel my wrath!", "Smash everything!"];
+    return withBotChatter(botState, currentPlayerId, msgs);
+  }
+  
+  return botState;
 }
 
 export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState {
@@ -122,33 +129,40 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
       if (state.playerOrder[state.currentPlayerIndex] !== action.payload.playerId) return state;
       if (state.rollCount >= 3) return state;
 
-      const player = state.players[action.payload.playerId];
       const newDice = state.dice.map(d => {
         if (d.kept) return d;
         const randomFace = DICE_FACES[Math.floor(Math.random() * DICE_FACES.length)];
         return { ...d, value: randomFace };
       });
 
-      const logMessage = `${player.name} rolled the dice.`;
-
-      // Next phase: check if we should auto-resolve if rollCount == 2
-      // For now, MVP just lets you roll.
-      let finalState = {
+      const finalState = {
         ...state,
         dice: newDice,
-        rollCount: state.rollCount + 1,
-        logs: [...state.logs, logMessage]
+        rollCount: state.rollCount + 1
       };
 
-      if (finalState.rollCount >= 3) {
-        // Temporarily auto-end turn until we build RESOLVE phase
-        finalState = {
-          ...finalState,
-          rollCount: 0,
-          currentPlayerIndex: (state.currentPlayerIndex + 1) % state.playerOrder.length,
-          dice: finalState.dice.map(d => ({ ...d, kept: false }))
-        };
-      }
+      return queueBotActionsIfNeeded(finalState);
+    }
+    case 'RESOLVE_DICE': {
+      if (state.status !== 'Playing') return state;
+      if (state.playerOrder[state.currentPlayerIndex] !== action.payload.playerId) return state;
+
+      const player = state.players[action.payload.playerId];
+      
+      // Calculate outcome string
+      const outcomeMap: Record<string, number> = {};
+      state.dice.forEach(d => { outcomeMap[d.value] = (outcomeMap[d.value] || 0) + 1; });
+      const outcomeStr = Object.entries(outcomeMap).map(([face, count]) => `${count}x ${face}`).join(', ');
+      
+      const logMessage = `${player.name} resolved: ${outcomeStr}.`;
+
+      const finalState: KotState = {
+        ...state,
+        rollCount: 0,
+        currentPlayerIndex: (state.currentPlayerIndex + 1) % state.playerOrder.length,
+        dice: state.dice.map(d => ({ ...d, kept: false })),
+        logs: [...state.logs, logMessage]
+      };
 
       return queueBotActionsIfNeeded(finalState);
     }
