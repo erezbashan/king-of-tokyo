@@ -311,10 +311,10 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
     let canBuy = false;
     st.market.forEach(cardId => {
       const card = CARD_REGISTRY[cardId];
-      if (card) {
+      if (card && (!st.players[playerId].cards || !st.players[playerId].cards.includes(cardId))) {
         const payload = { playerId, cardOwnerId: playerId, cost: card.cost };
         dispatchEvent(st, 'BUY_CARD_EVAL', payload);
-        if (st.players[playerId].energy >= payload.cost) canBuy = true;
+        if (st.players[playerId].energy >= (payload.cost || 0)) canBuy = true;
       }
     });
 
@@ -617,7 +617,7 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
       const { playerId, cardId } = action.payload;
       const player = state.players[playerId];
       const card = CARD_REGISTRY[cardId];
-      if (!card || !state.market.includes(cardId)) return state;
+      if (!card || !state.market.includes(cardId) || (player.cards && player.cards.includes(cardId))) return state;
 
       const payloadEval = { playerId: player.id, cardOwnerId: player.id, cost: card.cost };
       dispatchEvent(state, 'BUY_CARD_EVAL', payloadEval);

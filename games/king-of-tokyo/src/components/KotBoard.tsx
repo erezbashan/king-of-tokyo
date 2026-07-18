@@ -61,6 +61,7 @@ const AnimatedCounter = ({ value, icon, color, suffix, width }: { value: number,
 };
 
 import { CARD_REGISTRY, ALL_CARD_IDS } from '../engine/cards/registry';
+import { dispatchEvent } from '../engine/reducer';
 
 const renderSettings = (settings: any, dispatch: any, status: string) => {
   const currentSettings = {
@@ -162,6 +163,28 @@ export const KotBoard: React.FC = () => {
 
   const [keptDiceIds, setKeptDiceIds] = React.useState<string[]>([]);
   const isMyTurn = playerOrder[currentPlayerIndex] === myPlayerId;
+
+  const [highlightedCards, setHighlightedCards] = React.useState<string[]>([]);
+  const prevLogsLength = React.useRef(gameState.logs?.length || 0);
+
+  React.useEffect(() => {
+    if (gameState.logs && gameState.logs.length > prevLogsLength.current) {
+      const newLogs = gameState.logs.slice(prevLogsLength.current);
+      const highlighted: string[] = [];
+      newLogs.forEach(log => {
+        ALL_CARD_IDS.forEach(cId => {
+          if (log.includes(CARD_REGISTRY[cId].name)) {
+            highlighted.push(cId);
+          }
+        });
+      });
+      if (highlighted.length > 0) {
+        setHighlightedCards(highlighted);
+        setTimeout(() => setHighlightedCards([]), 2000);
+      }
+      prevLogsLength.current = gameState.logs.length;
+    }
+  }, [gameState.logs?.length]);
 
   // Clear local kept dice when turn ends/begins
   React.useEffect(() => {
@@ -266,28 +289,68 @@ export const KotBoard: React.FC = () => {
         <style dangerouslySetInnerHTML={{ __html: styles }} />
         
         {/* Top Row: Cards and Prompts */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '40px', minHeight: '150px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '40px', minHeight: '200px' }}>
           {/* Top Left: Cards Market */}
-          <div style={{ flex: 1, border: '2px dashed rgba(255,255,255,0.2)', borderRadius: '12px', padding: '10px', display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.2)', overflowX: 'auto' }}>
+          <div style={{ flex: 1, border: '2px dashed rgba(255,255,255,0.2)', borderRadius: '12px', padding: '15px', display: 'flex', gap: '15px', alignItems: 'stretch', justifyContent: 'flex-start', background: 'rgba(0,0,0,0.2)', overflowX: 'auto' }}>
             {gameState.market?.map((cardId, i) => {
               const card = CARD_REGISTRY[cardId];
               if (!card) return null;
+
+              let displayCost = card.cost;
+              if (isMyTurn && prompt?.text === 'Buy Phase') {
+                const evalPayload = { playerId: myPlayerId, cardOwnerId: myPlayerId, cost: card.cost };
+                dispatchEvent(gameState, 'BUY_CARD_EVAL', evalPayload);
+                displayCost = evalPayload.cost || 0;
+              }
+              const canAfford = (players[myPlayerId]?.energy || 0) >= displayCost;
+              const alreadyOwned = players[myPlayerId]?.cards?.includes(cardId);
+              const canBuy = isMyTurn && prompt?.text === 'Buy Phase' && canAfford && !alreadyOwned;
+
               return (
                 <div 
                   key={`${cardId}-${i}`}
-                  style={{ background: '#1e293b', border: '1px solid #475569', borderRadius: '8px', padding: '10px', width: '120px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', transition: 'transform 0.2s' }}
-                  onClick={() => setSelectedCard(cardId)}
-                  onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                  style={{ background: '#1e293b', border: '1px solid #475569', borderRadius: '8px', padding: '15px', minWidth: '180px', flex: '0 0 auto', display: 'flex', flexDirection: 'column', transition: 'transform 0.2s', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                  onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
                   onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
                 >
-                  <div style={{ color: '#06b6d4', fontWeight: 'bold', marginBottom: '5px' }}>{card.cost} ⚡</div>
-                  <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '5px' }}>{card.name}</div>
-                  <div style={{ fontSize: '10px', color: 'gray' }}>{card.type}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                    <div style={{ fontSize: '16px', fontWeight: 'bold' }}>{card.name}</div>
+                    <div style={{ fontSize: '12px', color: 'gray', padding: '2px 6px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px' }}>{card.type}</div>
+                  </div>
+                  
+                  <div style={{ color: '#06b6d4', fontWeight: 'bold', marginBottom: '10px', fontSize: '18px' }}>
+                    {displayCost < card.cost ? (
+                      <span>
+                        <s style={{color:'gray', marginRight: '5px'}}>{card.cost}</s> 
+                        <span>{displayCost} ⚡</span>
+                      </span>
+                    ) : (
+                      <span>{card.cost} ⚡</span>
+                    )}
+                  </div>
+                  
+                  <div style={{ fontSize: '14px', flex: 1, marginBottom: '15px', color: '#cbd5e1' }}>{card.description}</div>
+                  
+                  {isMyTurn && prompt?.text === 'Buy Phase' && (
+                    <button 
+                      disabled={!canBuy}
+                      onClick={() => dispatch({ type: 'BUY_CARD', payload: { playerId: myPlayerId, cardId } })}
+                      style={{ 
+                        padding: '8px 10px', width: '100%', fontSize: '14px', fontWeight: 'bold', borderRadius: '6px',
+                        background: canBuy ? '#3b82f6' : 'transparent', 
+                        color: canBuy ? 'white' : 'gray', 
+                        border: canBuy ? 'none' : '1px solid gray',
+                        cursor: canBuy ? 'pointer' : 'default'
+                      }}
+                    >
+                      {alreadyOwned ? 'Already Owned' : (canAfford ? `Buy for ${displayCost} ⚡` : 'Not enough ⚡')}
+                    </button>
+                  )}
                 </div>
               );
             })}
             {(!gameState.market || gameState.market.length === 0) && (
-              <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '18px', fontWeight: 'bold' }}>Market Empty</span>
+              <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '18px', fontWeight: 'bold', alignSelf: 'center', margin: 'auto' }}>Market Empty</span>
             )}
           </div>
 
@@ -351,15 +414,7 @@ export const KotBoard: React.FC = () => {
               <p style={{ fontSize: '16px', lineHeight: '1.5', marginBottom: '30px' }}>{CARD_REGISTRY[selectedCard].description}</p>
               
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                {prompt?.text === 'Buy Phase' && isMyTurn && gameState.market.includes(selectedCard) && (
-                  <button 
-                    className="btn primary" 
-                    onClick={() => { dispatch({ type: 'BUY_CARD', payload: { playerId: myPlayerId, cardId: selectedCard } }); setSelectedCard(null); }}
-                  >
-                    Buy Card
-                  </button>
-                )}
-                <button className="btn" onClick={() => setSelectedCard(null)}>Close</button>
+                <button onClick={() => setSelectedCard(null)} style={{ background: 'transparent', color: 'white', border: '1px solid gray', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer' }}>Close</button>
               </div>
             </div>
           </div>
@@ -398,15 +453,27 @@ export const KotBoard: React.FC = () => {
         </div>
         {p.cards && p.cards.length > 0 && (
           <div style={{ display: 'flex', gap: '5px', marginTop: '5px', flexWrap: 'wrap' }}>
-            {p.cards.map((cId, i) => (
-               <div 
-                 key={i} 
-                 onClick={() => setSelectedCard(cId)}
-                 style={{ fontSize: '11px', background: '#334155', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer' }}
-               >
-                 {CARD_REGISTRY[cId]?.name || cId}
-               </div>
-            ))}
+            {p.cards.map((cId, i) => {
+               const isHighlighted = highlightedCards.includes(cId);
+               return (
+                 <div 
+                   key={i} 
+                   onClick={() => setSelectedCard(cId)}
+                   style={{ 
+                     fontSize: '11px', 
+                     background: isHighlighted ? '#a855f7' : '#334155', 
+                     color: 'white',
+                     padding: '2px 6px', 
+                     borderRadius: '4px', 
+                     cursor: 'pointer',
+                     transition: 'background 0.3s, transform 0.3s',
+                     transform: isHighlighted ? 'scale(1.2)' : 'scale(1)'
+                   }}
+                 >
+                   {CARD_REGISTRY[cId]?.name || cId}
+                 </div>
+               );
+            })}
           </div>
         )}
       </div>
