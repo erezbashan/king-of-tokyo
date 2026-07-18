@@ -36,7 +36,15 @@ export function baseReducer<T extends BaseGameState>(state: T, action: BaseActio
     }
     case 'START_GAME': {
       if (state.status !== 'Lobby' || state.playerOrder.length === 0) return state;
-      return { ...state, status: 'Playing' };
+      
+      // Fisher-Yates shuffle the players
+      const newPlayerOrder = [...state.playerOrder];
+      for (let i = newPlayerOrder.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [newPlayerOrder[i], newPlayerOrder[j]] = [newPlayerOrder[j], newPlayerOrder[i]];
+      }
+
+      return { ...state, status: 'Playing', playerOrder: newPlayerOrder, currentPlayerIndex: 0 };
     }
     case 'NEW_GAME': {
       const newPlayers = { ...state.players };

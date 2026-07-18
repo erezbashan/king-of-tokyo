@@ -6,3 +6,4 @@ export * from './engine/types';
 export * from './engine/baseReducer';
 export * from './components/Modal';
 export * from './hooks/useGameController';
+export * from './hooks/GameContext';

@@ -60,6 +60,8 @@ function GameLobbyWrapper() {
   );
 }
 
+import { GameProvider } from '@erez/boardgame-core';
+
 function ActiveFlipsGame({ gameId, username }: { gameId: string, username: string }) {
   const { gameState, myPlayerId, dispatchToBackend, error } = useMultiplayerGame<FlipsState, FlipsAction>(gameId, 'flips', username);
   const navigate = useNavigate();
@@ -72,7 +74,18 @@ function ActiveFlipsGame({ gameId, username }: { gameId: string, username: strin
     return <div style={{ color: 'white', padding: '40px' }}>Loading game from Firebase...</div>;
   }
 
-  return <FlipsBoard gameState={gameState} myPlayerId={myPlayerId} dispatch={dispatchToBackend as any} onLeaveGame={() => navigate('/flips')} />;
+  const value = {
+    gameState,
+    myPlayerId,
+    dispatch: dispatchToBackend as any,
+    onLeaveGame: () => navigate('/flips')
+  };
+
+  return (
+    <GameProvider value={value}>
+      <FlipsBoard />
+    </GameProvider>
+  );
 }
 
 function ActiveGameWrapper() {

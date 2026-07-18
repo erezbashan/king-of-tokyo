@@ -90,7 +90,7 @@ export const onGameUpdated = onDocumentUpdated("games/{gameId}", async (event) =
 
     let newState;
     if (data.gameType === 'flips') {
-      const action = { type: 'FLIP_COIN', payload: { playerId: currentPlayerId, isHeads: Math.random() > 0.5 } } as any;
+      const action = { type: 'FLIP_COIN', payload: { playerId: currentPlayerId } } as any;
       newState = flipsReducer(curState, action);
       
       // Random chatter logic

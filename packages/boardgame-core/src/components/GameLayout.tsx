@@ -3,45 +3,41 @@ import './GameLayout.css';
 import { Modal } from './Modal';
 import { ChatWindow } from './ChatWindow';
 import { useGameController } from '../hooks/useGameController';
+import { useGameContext } from '../hooks/GameContext';
 import { GameLog } from './GameLog';
 import type { BaseGameState, BasePlayer, ChatMessage, GameStatus } from '../engine/types';
 
-export interface GameLayoutProps<TGameState extends BaseGameState = BaseGameState> {
+export interface GameLayoutProps {
   gameName: string;
-  gameState: TGameState;
-  myPlayerId: string;
-  dispatch: (action: any) => void;
-  onLeaveGame: () => void;
   
   // Content Slots
   helpText?: string;
-  children?: React.ReactNode; // Previously renderGraphics
-  settings?: React.ReactNode; // Previously renderSettings
+  children?: React.ReactNode; 
+  settings?: React.ReactNode; 
   renderGameSpecificPlayerDetails?: (playerId: string) => React.ReactNode;
   renderGameSpecificStats?: () => React.ReactNode;
 }
 
-export const GameLayout = <TGameState extends BaseGameState>({
+export const GameLayout: React.FC<GameLayoutProps> = ({
   gameName,
-  gameState,
-  myPlayerId,
-  dispatch,
-  onLeaveGame,
   helpText,
   settings,
   children,
   renderGameSpecificPlayerDetails,
   renderGameSpecificStats
-}: GameLayoutProps<TGameState>) => {
+}) => {
   const [showSettings, setShowSettings] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showStats, setShowStats] = useState(false);
 
+  const { gameState, myPlayerId, dispatch, onLeaveGame } = useGameContext();
   const { handleStart, handleAddBot, handleSendMessage, handleNewGame, handleRemovePlayer } = useGameController(dispatch);
   
   const { status, players: playersMap, playerOrder, currentPlayerIndex, chatMessages, logs } = gameState;
-  const players = playerOrder.map((id: string) => playersMap[id]);
+  const myIndex = playerOrder.indexOf(myPlayerId);
+  const displayOrder = myIndex >= 0 ? [...playerOrder.slice(myIndex), ...playerOrder.slice(0, myIndex)] : playerOrder;
+  const players = displayOrder.map((id: string) => playersMap[id]);
   const currentPlayerId = playerOrder[currentPlayerIndex];
 
   // Auto-show stats after 2 seconds when finished

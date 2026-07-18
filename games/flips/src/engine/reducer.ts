@@ -17,7 +17,7 @@ export interface FlipsState extends BaseGameState<FlipsPlayer> {
 
 export type FlipsAction = 
   | BaseAction
-  | { type: 'FLIP_COIN', payload: { playerId: string, isHeads: boolean } }
+  | { type: 'FLIP_COIN', payload: { playerId: string } }
   | { type: 'SET_TARGET_SCORE', payload: { targetScore: number } };
 
 export const initialFlipsState: FlipsState = {
@@ -86,7 +86,7 @@ export function flipsReducer(state: FlipsState, action: FlipsAction): FlipsState
       if (state.playerOrder[state.currentPlayerIndex] !== action.payload.playerId) return state;
 
       const player = state.players[action.payload.playerId];
-      const isHeads = action.payload.isHeads;
+      const isHeads = Math.random() > 0.5;
       const newScore = player.score + (isHeads ? 1 : 0);
       
       const newPlayerState = {

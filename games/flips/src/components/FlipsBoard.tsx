@@ -1,16 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import type { FlipsState, FlipsAction } from '../engine/reducer';
 import type { BasePlayer } from '@erez/boardgame-core';
-import { GameLayout, GameLog, useGameController } from '@erez/boardgame-core';
+import { GameLayout, GameLog, useGameContext } from '@erez/boardgame-core';
 
-interface FlipsBoardProps {
-  gameState: FlipsState;
-  myPlayerId: string;
-  dispatch: (action: FlipsAction) => void;
-  onLeaveGame: () => void;
-}
-
-export const FlipsBoard: React.FC<FlipsBoardProps> = ({ gameState, myPlayerId, dispatch, onLeaveGame }) => {
+export const FlipsBoard: React.FC = () => {
+  const { gameState, myPlayerId, dispatch } = useGameContext<FlipsState, FlipsAction>();
   const { status, targetScore, players, winnerId, lastFlipResult } = gameState;
 
   const isMyTurn = gameState.playerOrder[gameState.currentPlayerIndex] === myPlayerId;
@@ -22,8 +16,7 @@ export const FlipsBoard: React.FC<FlipsBoardProps> = ({ gameState, myPlayerId, d
 
   const handleFlip = () => {
     if (!isMyTurn || status !== 'Playing') return;
-    const isHeads = Math.random() > 0.5;
-    dispatch({ type: 'FLIP_COIN', payload: { playerId: myPlayerId, isHeads } });
+    dispatch({ type: 'FLIP_COIN', payload: { playerId: myPlayerId } });
   };
 
   const renderSettings = () => (
@@ -181,10 +174,6 @@ export const FlipsBoard: React.FC<FlipsBoardProps> = ({ gameState, myPlayerId, d
   return (
     <GameLayout
       gameName="Flips"
-      gameState={gameState}
-      myPlayerId={myPlayerId}
-      dispatch={dispatch}
-      onLeaveGame={onLeaveGame}
       helpText="Flips: First to target points wins! Click FLIP COIN to test your luck."
       settings={renderSettings()}
       renderGameSpecificPlayerDetails={renderPlayerDetails}
