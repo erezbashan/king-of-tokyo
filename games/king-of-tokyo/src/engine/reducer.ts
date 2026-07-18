@@ -133,7 +133,7 @@ export function dispatchEvent(state: KotState, event: CardEvent, payload: CardEv
 function initDeck(state: KotState): { deck: string[], market: string[] } {
   let deck: string[] = [];
   const copies = state.settings?.cardsPerType || 1;
-  const activeCards = state.settings?.activeCards || [];
+  const activeCards = state.settings?.activeCards || ['acid_attack', 'alien_metabolism', 'alpha_monster'];
   
   for (const cardId of activeCards) {
     for (let i = 0; i < copies; i++) {
