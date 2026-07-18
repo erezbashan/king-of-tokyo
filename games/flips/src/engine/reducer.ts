@@ -1,5 +1,5 @@
 import type { BaseGameState, BaseAction } from '@erez/boardgame-core';
-import { baseReducer, baseInitialState } from '@erez/boardgame-core';
+import { baseReducer, baseInitialState, withBotChatter } from '@erez/boardgame-core';
 
 import type { BasePlayer } from '@erez/boardgame-core';
 
@@ -37,15 +37,11 @@ function queueBotActionsIfNeeded(state: FlipsState): FlipsState {
   // Bot does the flip
   newActionQueue = [...newActionQueue, { delayMs: 1500, action: { type: 'FLIP_COIN', payload: { playerId: currentPlayerId } } }];
   
-  // Random chatter logic
-  const humanSpoke = state.chatMessages.some((m: any) => !state.players[m.sender]?.isBot);
-  if (!humanSpoke && Math.random() > 0.7) {
-    const msgs = ["I'm feeling lucky!", "Tails never fails...", "Beep boop, calculating flip...", "You humans stand no chance!"];
-    const msg = msgs[Math.floor(Math.random() * msgs.length)];
-    newActionQueue = [...newActionQueue, { delayMs: 0, action: { type: 'SEND_CHAT_MESSAGE', payload: { sender: player.name, text: msg, color: player.color } } }];
-  }
+  const botState = { ...state, actionQueue: newActionQueue };
 
-  return { ...state, actionQueue: newActionQueue };
+  // Add random chatter using FW helper
+  const msgs = ["I'm feeling lucky!", "Tails never fails...", "Beep boop, calculating flip...", "You humans stand no chance!"];
+  return withBotChatter(botState, currentPlayerId, msgs);
 }
 
 export function flipsReducer(state: FlipsState, action: FlipsAction): FlipsState {
