@@ -92,9 +92,7 @@ export const GameLayout: React.FC<GameLayoutProps> = ({
           </div>
           <div className="game-bottom-area">
             <div className="game-log-wrapper">
-              <GameLog logs={
-                logs.flatMap((l: string, index: number) => [<span key={`msg-${index}`}>{l}</span>, '---'])
-              } />
+              <GameLog logs={logs.map((l: string, index: number) => <span key={`msg-${index}`}>{l}</span>)} />
             </div>
             <div className="game-chat-wrapper">
               <ChatWindow 

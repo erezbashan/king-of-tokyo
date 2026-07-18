@@ -135,6 +135,50 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
     return newState;
   }
 
+  function advanceTurn(st: KotState): KotState {
+    let nextIndex = st.currentPlayerIndex;
+    let aliveCount = 0;
+    let aliveWinnerId: string | null = null;
+    
+    for (const id of st.playerOrder) {
+      if (st.players[id].health > 0) {
+        aliveCount++;
+        aliveWinnerId = id;
+      }
+    }
+
+    if (aliveCount <= 1) {
+      return {
+        ...st,
+        status: 'Finished',
+        winnerId: aliveWinnerId || null,
+        logs: [...st.logs, `Only one monster left standing!`, '---']
+      };
+    }
+
+    const vpWinner = st.playerOrder.find(id => st.players[id].vp >= (st.settings?.maxVp || 20));
+    if (vpWinner) {
+      return {
+        ...st,
+        status: 'Finished',
+        winnerId: vpWinner,
+        logs: [...st.logs, `🏆 ${st.players[vpWinner].name} reached Max VPs!`, '---']
+      };
+    }
+
+    do {
+      nextIndex = (nextIndex + 1) % st.playerOrder.length;
+    } while (st.players[st.playerOrder[nextIndex]].health <= 0);
+
+    return {
+      ...st,
+      currentPlayerIndex: nextIndex,
+      rollCount: 0,
+      dice: st.dice.map(d => ({ ...d, kept: false })),
+      logs: [...st.logs, '---']
+    };
+  }
+
   switch (action.type) {
     case 'UPDATE_SETTINGS': {
       if (state.status !== 'Lobby') return state;
@@ -152,20 +196,32 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
       if (state.playerOrder[state.currentPlayerIndex] !== action.payload.playerId) return state;
       if (state.rollCount >= 3) return state;
 
-      const keptDiceIds = action.payload.keptDiceIds || [];
+      let finalState = { ...state };
 
-      const newDice = state.dice.map(d => {
-        if (state.rollCount > 0 && keptDiceIds.includes(d.id)) {
+      if (state.rollCount === 0) {
+        const p = finalState.players[action.payload.playerId];
+        if (p.location === 'TokyoCity' && p.health > 0) {
+          finalState.players = {
+            ...finalState.players,
+            [p.id]: { ...p, vp: p.vp + 2 }
+          };
+          finalState.logs = [...finalState.logs, `${p.name} starts turn in Tokyo! Gained 2 ⭐`];
+        }
+      }
+
+      const keptDiceIds = action.payload.keptDiceIds || [];
+      const newDice = finalState.dice.map(d => {
+        if (finalState.rollCount > 0 && keptDiceIds.includes(d.id)) {
           return { ...d, kept: true };
         }
         const randomFace = DICE_FACES[Math.floor(Math.random() * DICE_FACES.length)];
         return { ...d, value: randomFace, kept: false };
       });
 
-      let finalState = {
-        ...state,
+      finalState = {
+        ...finalState,
         dice: newDice,
-        rollCount: state.rollCount + 1
+        rollCount: finalState.rollCount + 1
       };
 
       if (finalState.rollCount >= 3) {
@@ -178,7 +234,6 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
       return queueBotActionsIfNeeded(finalState);
     }
     case 'BOT_PLAY': {
-      // Must import botLogic lazily or at top. We will import at top.
       const botPlayer = state.players[action.payload.playerId];
       if (!botPlayer || !botPlayer.isBot) return state;
       
@@ -195,40 +250,46 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
       if (state.playerOrder[state.currentPlayerIndex] !== action.payload.playerId) return state;
 
       const player = state.players[action.payload.playerId];
-      
       const outcomeMap: Record<string, number> = {};
       state.dice.forEach(d => { outcomeMap[d.value] = (outcomeMap[d.value] || 0) + 1; });
       
       const outcomeEmojiMap: Record<string, string> = { Heart: '❤️', Energy: '⚡', Smash: '💥', '1': '1️⃣', '2': '2️⃣', '3': '3️⃣' };
-      const outcomeStr = Object.entries(outcomeMap).map(([face, count]) => `${count}x ${outcomeEmojiMap[face] || face}`).join(', ');
-      const logMessage = `${player.name} resolved: ${outcomeStr}.`;
+      const outcomeStr = state.dice.map(d => outcomeEmojiMap[d.value] || d.value).join(' ');
+      const logMessage = `${player.name} resolved: ${outcomeStr}`;
 
       let newHealth = player.health;
       let newVp = player.vp;
       let newEnergy = player.energy;
+      let newLogs = [...state.logs, logMessage];
       
       // Energy
       if (outcomeMap['Energy']) {
         newEnergy += outcomeMap['Energy'];
+        newLogs.push(`${player.name} gained ${outcomeMap['Energy']} ⚡`);
       }
 
       // Healing (only if Outside Tokyo)
       if (outcomeMap['Heart'] && player.location === 'Outside') {
         const maxHealth = state.settings?.maxHealth || 10;
-        newHealth = Math.min(maxHealth, newHealth + outcomeMap['Heart']);
+        const actualHeal = Math.min(maxHealth - player.health, outcomeMap['Heart']);
+        if (actualHeal > 0) {
+          newHealth += actualHeal;
+          newLogs.push(`${player.name} healed ${actualHeal} ❤️`);
+        }
       }
 
       // VPs for numbers
       ['1', '2', '3'].forEach(num => {
         const count = outcomeMap[num] || 0;
         if (count >= 3) {
-          newVp += parseInt(num) + (count - 3);
+          const gained = parseInt(num) + (count - 3);
+          newVp += gained;
+          newLogs.push(`${player.name} gained ${gained} ⭐`);
         }
       });
 
       const updatedPlayer = { ...player, health: newHealth, vp: newVp, energy: newEnergy };
       let newPlayers = { ...state.players, [player.id]: updatedPlayer };
-      let newLogs = [...state.logs, logMessage];
       let newPrompt = state.prompt;
 
       // Attacking
@@ -236,44 +297,52 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
       if (smashCount > 0) {
         if (player.location === 'Outside') {
           // Attack Tokyo players
-          const tokyoPlayers = Object.values(newPlayers).filter(p => p.location === 'TokyoCity');
+          const tokyoPlayers = Object.values(newPlayers).filter(p => p.location === 'TokyoCity' && p.health > 0);
           if (tokyoPlayers.length === 0) {
-            // Enter Tokyo empty
             newPlayers[player.id].location = 'TokyoCity';
             newPlayers[player.id].vp += 1;
-            newLogs.push(`${player.name} entered Tokyo and gained 1 VP!`);
+            newLogs.push(`${player.name} entered Tokyo and gained 1 ⭐!`);
           } else {
-            // Damage Tokyo players
             let damagedSomeone = false;
             tokyoPlayers.forEach(tp => {
               newPlayers[tp.id].health = Math.max(0, newPlayers[tp.id].health - smashCount);
               damagedSomeone = true;
+              if (newPlayers[tp.id].health === 0) {
+                newLogs.push(`💀 ${tp.name} was eliminated!`);
+              }
             });
             newLogs.push(`${player.name} dealt ${smashCount} 💥 to Tokyo!`);
             
-            // Check if anyone died
-            // (Handling death is omitted for brevity, let's assume they don't die instantly or we'll handle it later)
-            
-            // Prompt first damaged Tokyo player to yield
+            // Prompt first damaged living Tokyo player to yield
             if (damagedSomeone) {
-              const damagedTp = tokyoPlayers[0];
-              newPrompt = {
-                playerId: damagedTp.id,
-                text: `${player.name} dealt ${smashCount} 💥. Will you yield Tokyo?`,
-                options: [
-                  { label: 'Yield', action: { type: 'YIELD_TOKYO', payload: { playerId: damagedTp.id, attackerId: player.id } } },
-                  { label: 'Stay', action: { type: 'STAY_IN_TOKYO', payload: { playerId: damagedTp.id } } }
-                ]
-              };
+              const livingTokyoPlayer = tokyoPlayers.find(tp => newPlayers[tp.id].health > 0);
+              if (livingTokyoPlayer) {
+                newPrompt = {
+                  playerId: livingTokyoPlayer.id,
+                  text: `Will you yield Tokyo?`,
+                  options: [
+                    { label: 'Yield', action: { type: 'YIELD_TOKYO', payload: { playerId: livingTokyoPlayer.id, attackerId: player.id } } },
+                    { label: 'Stay', action: { type: 'STAY_IN_TOKYO', payload: { playerId: livingTokyoPlayer.id } } }
+                  ]
+                };
+              } else {
+                // All Tokyo players died, automatically enter Tokyo
+                newPlayers[player.id].location = 'TokyoCity';
+                newPlayers[player.id].vp += 1;
+                newLogs.push(`${player.name} entered empty Tokyo and gained 1 ⭐!`);
+              }
             }
           }
         } else {
           // Attack Outside players
           let damagedSomeone = false;
           Object.values(newPlayers).forEach(p => {
-            if (p.location === 'Outside' && p.id !== player.id) {
+            if (p.location === 'Outside' && p.id !== player.id && p.health > 0) {
               newPlayers[p.id].health = Math.max(0, newPlayers[p.id].health - smashCount);
               damagedSomeone = true;
+              if (newPlayers[p.id].health === 0) {
+                newLogs.push(`💀 ${p.name} was eliminated!`);
+              }
             }
           });
           if (damagedSomeone) {
@@ -284,9 +353,7 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
 
       let finalState: KotState = {
         ...state,
-        rollCount: 0,
         players: newPlayers,
-        dice: state.dice.map(d => ({ ...d, kept: false })),
         logs: newLogs
       };
 
@@ -294,7 +361,7 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
         finalState.prompt = newPrompt;
       } else {
         delete finalState.prompt;
-        finalState.currentPlayerIndex = (state.currentPlayerIndex + 1) % state.playerOrder.length;
+        finalState = advanceTurn(finalState);
       }
 
       return queueBotActionsIfNeeded(finalState);
@@ -310,13 +377,13 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
       newPlayers[attackerId].location = 'TokyoCity';
       newPlayers[attackerId].vp += 1;
 
-      const finalState: KotState = {
+      let finalState: KotState = {
         ...state,
         players: newPlayers,
-        logs: [...state.logs, `${player.name} yielded Tokyo! ${attacker.name} enters and gains 1 VP!`],
-        currentPlayerIndex: (state.currentPlayerIndex + 1) % state.playerOrder.length
+        logs: [...state.logs, `${player.name} yielded Tokyo!`, `${attacker.name} enters and gains 1 ⭐!`]
       };
       delete finalState.prompt;
+      finalState = advanceTurn(finalState);
       
       return queueBotActionsIfNeeded(finalState);
     }
@@ -325,12 +392,12 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
       const player = state.players[playerId];
       if (!player || !state.prompt || state.prompt.playerId !== playerId) return state;
 
-      const finalState: KotState = {
+      let finalState: KotState = {
         ...state,
-        logs: [...state.logs, `${player.name} stays in Tokyo!`],
-        currentPlayerIndex: (state.currentPlayerIndex + 1) % state.playerOrder.length
+        logs: [...state.logs, `${player.name} stays in Tokyo!`]
       };
       delete finalState.prompt;
+      finalState = advanceTurn(finalState);
       
       return queueBotActionsIfNeeded(finalState);
     }

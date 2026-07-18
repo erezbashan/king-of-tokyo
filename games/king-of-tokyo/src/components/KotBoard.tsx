@@ -31,7 +31,7 @@ const LightningIcon = () => (
   </svg>
 );
 
-const AnimatedCounter = ({ value, icon, color }: { value: number, icon: React.ReactNode, color: string }) => {
+const AnimatedCounter = ({ value, icon, color, suffix, width }: { value: number, icon: React.ReactNode, color: string, suffix?: string, width?: string }) => {
   const prevValue = React.useRef(value);
   const [animClass, setAnimClass] = React.useState('');
 
@@ -50,14 +50,16 @@ const AnimatedCounter = ({ value, icon, color }: { value: number, icon: React.Re
   }, [value]);
 
   return (
-    <div style={{ color, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
+    <div style={{ color, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px', width, minWidth: width }}>
       <span>{icon}</span>
-      <span className={animClass} style={{ display: 'inline-block', transition: 'all 0.3s' }}>{value}</span>
+      <span className={animClass} style={{ display: 'inline-block', transition: 'all 0.3s', fontFamily: width ? 'monospace' : 'inherit' }}>
+        {value}{suffix}
+      </span>
     </div>
   );
 };
 
-const SettingsPanel = ({ settings, dispatch, status }: any) => {
+const renderSettings = (settings: any, dispatch: any, status: string) => {
   return (
     <div style={{ padding: '20px', textAlign: 'center' }}>
       <div style={{ margin: '10px 20px' }}>
@@ -135,11 +137,11 @@ export const KotBoard: React.FC = () => {
     // 1. If there's an active prompt for ME
     if (prompt && prompt.playerId === myPlayerId) {
       return (
-        <div style={{ background: 'rgba(239, 68, 68, 0.2)', padding: '20px', borderRadius: '12px', border: '1px solid #ef4444' }}>
+        <div style={{ background: 'rgba(239, 68, 68, 0.2)', padding: '20px', borderRadius: '12px', border: '1px solid #ef4444', display: 'flex', flexDirection: 'column' }}>
           <h3 style={{ margin: '0 0 15px 0' }}>{prompt.text}</h3>
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'space-around', marginTop: '10px' }}>
             {prompt.options.map((opt, i) => (
-              <button key={i} className="btn primary" onClick={() => dispatch(opt.action as KotAction)}>
+              <button key={i} className="btn primary" style={{ flex: 1 }} onClick={() => dispatch(opt.action as KotAction)}>
                 {opt.label}
               </button>
             ))}
@@ -247,14 +249,28 @@ export const KotBoard: React.FC = () => {
 
   const renderPlayerDetails = (playerId: string) => {
     const p = players[playerId];
+    const isDead = p.health <= 0;
+    
     return (
-      <div style={{ marginTop: '10px', textAlign: 'center', display: 'flex', justifyContent: 'center', gap: '15px' }}>
-        <AnimatedCounter value={p.health} icon="❤️" color="#ef4444" />
-        <AnimatedCounter value={p.vp} icon="⭐" color="#eab308" />
-        <AnimatedCounter value={p.energy} icon={<LightningIcon />} color="#06b6d4" />
-        {p.location === 'TokyoCity' && (
-          <div style={{ color: '#a855f7', fontWeight: 'bold', border: '1px solid #a855f7', padding: '2px 6px', borderRadius: '4px', fontSize: '12px' }}>
+      <div style={{ 
+        marginTop: '10px', 
+        display: 'flex', 
+        justifyContent: 'flex-start', 
+        gap: '20px',
+        filter: isDead ? 'grayscale(100%)' : 'none',
+        opacity: isDead ? 0.5 : 1
+      }}>
+        <AnimatedCounter value={p.health} icon="❤️" color="#ef4444" suffix={`/${settings?.maxHealth || 10}`} width="70px" />
+        <AnimatedCounter value={p.vp} icon="⭐" color="#eab308" width="40px" />
+        <AnimatedCounter value={p.energy} icon={<LightningIcon />} color="#06b6d4" width="40px" />
+        {p.location === 'TokyoCity' && !isDead && (
+          <div style={{ color: '#a855f7', fontWeight: 'bold', border: '1px solid #a855f7', padding: '2px 6px', borderRadius: '4px', fontSize: '12px', marginLeft: 'auto' }}>
             TOKYO
+          </div>
+        )}
+        {isDead && (
+          <div style={{ color: 'gray', fontWeight: 'bold', border: '1px solid gray', padding: '2px 6px', borderRadius: '4px', fontSize: '12px', marginLeft: 'auto' }}>
+            DEAD
           </div>
         )}
       </div>
@@ -267,7 +283,7 @@ export const KotBoard: React.FC = () => {
       helpText={`Roll dice up to 3 times. Reach ${settings?.maxVp || 20} VP or be the last monster standing!`}
       helpUrl="https://en.wikipedia.org/wiki/King_of_Tokyo"
       renderGameSpecificPlayerDetails={renderPlayerDetails}
-      settings={<SettingsPanel settings={settings} dispatch={dispatch} status={status} />}
+      settings={renderSettings(settings, dispatch, status)}
     >
       {renderGraphics()}
     </GameLayout>
