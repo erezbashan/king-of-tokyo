@@ -347,11 +347,7 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
       newLogs.push(`${nextPlayer.name} starts turn in Tokyo! Gained 2 ⭐`);
     }
 
-    const extraHeadCount = newPlayers[nextPlayerId].cards.filter(c => c === 'extra_head').length;
-    if (extraHeadCount > 0) {
-      newLogs.push(`${nextPlayer.name} readies their Extra Head!`);
-    }
-    const totalDice = 6 + extraHeadCount - (st.turnContext?.freezeTimeActivated ? 1 : 0);
+    const totalDice = 6 - (st.turnContext?.freezeTimeActivated ? 1 : 0);
     const nextDice = [];
     for (let i = 0; i < totalDice; i++) {
       nextDice.push({ id: Math.random().toString(36).substring(7), value: '1' as any, kept: false });
@@ -428,12 +424,11 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
 
         let finalState = { ...state };
         const player = finalState.players[action.payload.playerId];
-        const maxRolls = player.cards.includes('giant_brain') ? 4 : 3;
+        const maxRolls = 3;
 
         if (finalState.rollCount >= maxRolls) return state;
 
-        const extraHeadCount = player.cards.filter(c => c === 'extra_head').length;
-        const totalDice = 6 + extraHeadCount - (finalState.turnContext.freezeTimePenalty ? 1 : 0);
+        const totalDice = 6 - (finalState.turnContext?.freezeTimePenalty ? 1 : 0);
 
         let currentDice = [...finalState.dice];
         if (currentDice.length < totalDice) {
@@ -480,66 +475,7 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
         }
         return state;
       }
-      case 'USE_HERD_CULLER': {
-        if (state.status !== 'Playing' || !state.prompt || state.prompt.playerId !== action.payload.playerId) return state;
-        let finalState = { ...state };
-        delete finalState.prompt;
-        finalState.turnContext = { ...finalState.turnContext, herdCullerResolved: true };
 
-        if (!action.payload.skip) {
-          const dieIndex = finalState.dice.findIndex(d => d.value === action.payload.faceToChange);
-          if (dieIndex !== -1) {
-             const newDice = [...finalState.dice];
-             newDice[dieIndex] = { ...newDice[dieIndex], value: '1' };
-             finalState.dice = newDice;
-             const faceLabels: Record<string, string> = { Heart: '❤️', Energy: '⚡', Smash: '💥', '2': '2️⃣', '3': '3️⃣' };
-             const changedLabel = faceLabels[action.payload.faceToChange || ''] || action.payload.faceToChange;
-             finalState.logs.push(`${finalState.players[action.payload.playerId].name} used Herd Culler to change a ${changedLabel} to a 1️⃣`);
-          }
-        }
-        
-        finalState.actionQueue = [
-          ...(finalState.actionQueue || []),
-          { delayMs: 500, action: { type: 'RESOLVE_DICE', payload: { playerId: action.payload.playerId } as any } }
-        ];
-        return queueBotActionsIfNeeded(finalState);
-      }
-      case 'USE_HEALING_RAY': {
-        if (state.status !== 'Playing' || !state.prompt || state.prompt.playerId !== action.payload.playerId) return state;
-        let finalState = { ...state };
-        delete finalState.prompt;
-        
-        if (action.payload.skip) {
-           finalState.turnContext = { ...finalState.turnContext, healingRayResolved: true };
-           finalState.actionQueue = [
-             ...(finalState.actionQueue || []),
-             { delayMs: 500, action: { type: 'RESOLVE_DICE', payload: { playerId: action.payload.playerId } as any } }
-           ];
-           return queueBotActionsIfNeeded(finalState);
-        }
-
-        const target = finalState.players[action.payload.targetId!];
-        const healer = finalState.players[action.payload.playerId];
-        const energyToSteal = Math.min(2, target.energy);
-        
-        const dieIndex = finalState.dice.findIndex(d => d.value === 'Heart');
-        if (dieIndex !== -1) {
-           const newDice = [...finalState.dice];
-           newDice.splice(dieIndex, 1);
-           finalState.dice = newDice;
-        }
-
-        finalState.players[target.id] = { ...target, health: Math.min(state.settings?.maxHealth || 10, target.health + 1), energy: target.energy - energyToSteal };
-        finalState.players[healer.id] = { ...healer, energy: healer.energy + energyToSteal };
-        
-        finalState.logs.push(`${healer.name} used Healing Ray to heal ${target.name} for 1 ❤️ and stole ${energyToSteal} ⚡!`);
-        
-        finalState.actionQueue = [
-          ...(finalState.actionQueue || []),
-          { delayMs: 500, action: { type: 'RESOLVE_DICE', payload: { playerId: action.payload.playerId } as any } }
-        ];
-        return queueBotActionsIfNeeded(finalState);
-      }
       case 'RESOLVE_DICE': {
         if (state.status !== 'Playing') return state;
         if (state.playerOrder[state.currentPlayerIndex] !== action.payload.playerId) return state;
@@ -566,11 +502,10 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
 
         // Energy
         if (outcomeMap['Energy']) {
-          const hasFriend = player.cards.includes('friend_of_children');
-          const energyGain = outcomeMap['Energy'] + (hasFriend ? 1 : 0);
+          const energyGain = outcomeMap['Energy'];
           newEnergy += energyGain;
           newStats.energyGained += energyGain;
-          newLogs.push(`${player.name} gained ${energyGain} ⚡` + (hasFriend ? ' (including 1 from Friend of Children)' : ''));
+          newLogs.push(`${player.name} gained ${energyGain} ⚡`);
         }
 
         // Heal
@@ -591,15 +526,8 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
           const count = outcomeMap[num] || 0;
           if (count >= 3) {
             let gained = parseInt(num) + (count - 3);
-            if (num === '1' && player.cards.includes('gourmet')) {
-              gained += 2;
-              newLogs.push(`${player.name} gets 2 extra ⭐ from Gourmet!`);
-            }
             newVp += gained;
             newLogs.push(`${player.name} gained ${gained} ⭐`);
-            if (num === '1' && player.cards.includes('freeze_time')) {
-              finalState.turnContext.freezeTimeActivated = true;
-            }
           }
         });
 
@@ -723,31 +651,6 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
           }
         }
 
-        if (damagedSomeone && finalState.players[player.id].cards.includes('fire_breathing')) {
-          const order = finalState.playerOrder;
-          const N = order.length;
-          const attackerIdx = order.indexOf(player.id);
-          const neighbors = [order[(attackerIdx - 1 + N) % N], order[(attackerIdx + 1) % N]];
-          const uniqueNeighbors = [...new Set(neighbors)].filter(id => id !== player.id);
-          
-          uniqueNeighbors.forEach(nId => {
-            if (finalState.players[nId].health > 0) {
-               let dmgObj = { damage: 1 };
-               finalState = dispatchEvent(finalState, 'BEFORE_TAKE_DAMAGE', { playerId: nId, attackerId: player.id, damage: dmgObj });
-               const actualDmg = dmgObj.damage;
-               
-               if (actualDmg > 0) {
-                 finalState.players[nId].health = Math.max(0, finalState.players[nId].health - actualDmg);
-                 finalState.logs.push(`🔥 ${finalState.players[nId].name} takes ${actualDmg} extra damage from ${finalState.players[player.id].name}'s Fire Breathing!`);
-                 if (finalState.players[nId].health === 0) {
-                    finalState.players[player.id].stats.playersKilled += 1;
-                    finalState.logs.push(`💀 ${finalState.players[nId].name} was eliminated!`);
-                    finalState = dispatchEvent(finalState, 'MONSTER_DIED', { playerId: player.id, deadPlayerId: nId });
-                 }
-               }
-            }
-          });
-        }
 
         finalState.turnContext.damagedSomeoneThisTurn = damagedSomeone;
         finalState = dispatchEvent(finalState, 'AFTER_ATTACK', { playerId: player.id, damagedSomeone });
@@ -800,10 +703,7 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
         finalState = dispatchEvent(finalState, 'END_TURN', { playerId: action.payload.playerId });
         const player = finalState.players[action.payload.playerId];
         
-        if (player.cards.includes('herbivore') && !finalState.turnContext.damagedSomeoneThisTurn) {
-          finalState.players[player.id].vp += 1;
-          finalState.logs.push(`${player.name} gained 1 ⭐ from Herbivore!`);
-        }
+
         finalState = advanceTurn(finalState);
         return queueBotActionsIfNeeded(finalState);
       }

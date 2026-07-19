@@ -70,7 +70,7 @@ const AnimatedCounter = ({ value, icon, color, suffix, width }: { value: number,
   );
 };
 
-import { CARD_REGISTRY, ALL_CARD_IDS } from '../engine/cards/registry';
+import { CARD_REGISTRY } from "../engine/cards/registry";
 import { dispatchEvent } from '../engine/reducer';
 
 const renderSettings = (settings: any, dispatch: any, status: string, setSelectedCard: any) => {
@@ -134,7 +134,7 @@ const renderSettings = (settings: any, dispatch: any, status: string, setSelecte
         <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '10px' }}>
           <button 
             disabled={status !== 'Lobby'} 
-            onClick={() => dispatch({ type: 'UPDATE_SETTINGS', payload: { ...currentSettings, activeCards: ALL_CARD_IDS } })}
+            onClick={() => dispatch({ type: 'UPDATE_SETTINGS', payload: { ...currentSettings, activeCards: Object.keys(CARD_REGISTRY) } })}
             style={{ padding: '4px 8px', fontSize: '12px', background: 'transparent', color: '#60a5fa', border: '1px solid #60a5fa', borderRadius: '4px', cursor: status === 'Lobby' ? 'pointer' : 'default', opacity: status === 'Lobby' ? 1 : 0.5 }}
           >
             Select All
@@ -148,7 +148,7 @@ const renderSettings = (settings: any, dispatch: any, status: string, setSelecte
           </button>
         </div>
         <div style={{ textAlign: 'left', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px', display: 'inline-block', width: '100%' }}>
-          {[...(status === 'Lobby' ? ALL_CARD_IDS : currentSettings.activeCards)]
+          {[...(status === 'Lobby' ? Object.keys(CARD_REGISTRY) : currentSettings.activeCards)]
             .sort((a, b) => CARD_REGISTRY[a].name.localeCompare(CARD_REGISTRY[b].name))
             .map((id: string) => {
             const isActive = currentSettings.activeCards.includes(id);
@@ -203,7 +203,7 @@ export const KotBoard: React.FC = () => {
       const newLogs = gameState.logs.slice(prevLogsLength.current);
       const highlighted: {cardId: string, playerId: string}[] = [];
       newLogs.forEach(log => {
-        ALL_CARD_IDS.forEach(cId => {
+        Object.keys(CARD_REGISTRY).forEach(cId => {
           if (log.includes(CARD_REGISTRY[cId].name)) {
             let foundPlayerId: string | null = null;
             for (const pId of gameState.playerOrder || []) {
@@ -231,7 +231,7 @@ export const KotBoard: React.FC = () => {
   React.useEffect(() => {
     setKeptDiceIds(gameState.dice.filter(d => d.kept).map(d => d.id));
   }, [gameState.dice]);
-  const maxRolls = players[myPlayerId]?.cards?.includes('giant_brain') ? 4 : 3;
+  const maxRolls = 3;
 
   const handleRoll = () => {
     if (!isMyTurn || status !== 'Playing' || rollCount >= maxRolls || prompt) return;
@@ -504,7 +504,7 @@ export const KotBoard: React.FC = () => {
   const renderLogMessage = (msg: string, defaultRenderer: (m: string) => React.ReactNode) => {
     let parts: React.ReactNode[] = [msg];
     
-    ALL_CARD_IDS.forEach(cId => {
+    Object.keys(CARD_REGISTRY).forEach(cId => {
       const card = CARD_REGISTRY[cId];
       if (!card) return;
       const newParts: React.ReactNode[] = [];
