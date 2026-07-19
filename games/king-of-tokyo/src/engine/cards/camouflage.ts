@@ -26,10 +26,11 @@ export const Camouflage: KotCard = {
           }
         }
         
+        const blockMsg = heartsRolled > 0 ? `Blocked ${heartsRolled} damage!` : `Failed to block any damage!`;
+        const logMsg = `🛡️ ${player.name} activated Camouflage! Rolled: ${rolledFaces.join(' ')}. ${blockMsg}`;
+        
         const originalDamage = damage.damage;
         damage.damage = Math.max(0, originalDamage - heartsRolled);
-        
-        const logMsg = `🛡️ ${player.name} activated Camouflage! Rolled ${diceCount} dice: ${rolledFaces.join(' ')}. Blocked ${heartsRolled} damage!`;
         
         return {
           ...state,
