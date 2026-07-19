@@ -8,7 +8,9 @@ export type CardEvent =
   | 'BEFORE_TAKE_DAMAGE'  // Fired before taking damage
   | 'BEFORE_RESOLVE_DICE' // Fired before resolving dice
   | 'CARD_ACTION'         // Fired when user answers a card prompt
-  | 'YIELD_TOKYO';        // Fired when a player yields Tokyo
+  | 'YIELD_TOKYO'         // Fired when a player yields Tokyo
+  | 'END_TURN'            // Fired at the end of a player's turn
+  | 'MONSTER_DIED';       // Fired when a player's health reaches 0
 
 export interface CardEventPayload {
   playerId: string;

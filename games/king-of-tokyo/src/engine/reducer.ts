@@ -536,6 +536,7 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
                       }
                     };
                     finalState.logs.push(`💀 ${tp.name} was eliminated!`);
+                    finalState = dispatchEvent(finalState, 'MONSTER_DIED', { playerId: player.id, deadPlayerId: tp.id });
                   }
                 }
               });
@@ -582,6 +583,7 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
                   if (finalState.players[p.id].health === 0) {
                     finalState.players[player.id].stats.playersKilled += 1;
                     finalState.logs.push(`💀 ${p.name} was eliminated!`);
+                    finalState = dispatchEvent(finalState, 'MONSTER_DIED', { playerId: player.id, deadPlayerId: p.id });
                   }
                 }
               }
@@ -654,6 +656,7 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
         if (state.status !== 'Playing' || !state.prompt || state.prompt.playerId !== action.payload.playerId) return state;
         let finalState = { ...state };
         delete finalState.prompt;
+        finalState = dispatchEvent(finalState, 'END_TURN', { playerId: action.payload.playerId });
         finalState = advanceTurn(finalState);
         return queueBotActionsIfNeeded(finalState);
       }
