@@ -250,8 +250,8 @@ export const KotBoard: React.FC = () => {
     // 2. If it's MY turn and NO prompt
     if (isMyTurn && !prompt) {
       return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-end', minHeight: '60px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
+        <div style={{ height: '130px', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center', justifyContent: 'flex-start' }}>
             {rollCount < 3 && (
               <button className="btn primary" onClick={handleRoll} style={{ width: '160px', height: '60px', fontSize: '20px' }}>
                  Roll ({3 - rollCount})
