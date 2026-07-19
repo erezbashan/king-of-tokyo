@@ -195,20 +195,19 @@ export const KotBoard: React.FC = () => {
     }
   }, [gameState.logs?.length]);
 
-  // Clear local kept dice when turn ends/begins
+  // Sync kept dice from server whenever dice state updates
   React.useEffect(() => {
-    if (rollCount === 0) {
-      setKeptDiceIds([]);
-    }
-  }, [rollCount]);
+    setKeptDiceIds(gameState.dice.filter(d => d.kept).map(d => d.id));
+  }, [gameState.dice]);
 
   const handleRoll = () => {
     if (!isMyTurn || status !== 'Playing' || prompt) return;
-    dispatch({ type: 'ROLL_DICE', payload: { playerId: myPlayerId, keptDiceIds } });
+    const payload = { playerId: myPlayerId, keptDiceIds };
+    dispatch({ type: 'ROLL_DICE', payload });
   };
 
   const handleResolve = () => {
-    if (!isMyTurn || status !== 'Playing' || rollCount === 0 || prompt) return;
+    if (!isMyTurn || status !== 'Playing' || prompt || rollCount === 0) return;
     dispatch({ type: 'RESOLVE_DICE', payload: { playerId: myPlayerId } });
   };
 
@@ -252,15 +251,15 @@ export const KotBoard: React.FC = () => {
     if (isMyTurn && !prompt) {
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-end', minHeight: '60px' }}>
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-            {rollCount > 0 && rollCount < 3 && (
-              <button className="btn" onClick={handleResolve} style={{ width: '160px', height: '60px', fontSize: '20px', background: '#10b981', color: 'white', border: 'none' }}>
-                Done
-              </button>
-            )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
             {rollCount < 3 && (
               <button className="btn primary" onClick={handleRoll} style={{ width: '160px', height: '60px', fontSize: '20px' }}>
                  Roll ({3 - rollCount})
+              </button>
+            )}
+            {rollCount > 0 && rollCount < 3 && (
+              <button className="btn" onClick={handleResolve} style={{ width: '160px', height: '60px', fontSize: '20px', background: '#10b981', color: 'white', border: 'none' }}>
+                Done
               </button>
             )}
             {rollCount >= 3 && (
@@ -274,18 +273,7 @@ export const KotBoard: React.FC = () => {
     }
 
     // 3. Not my turn / Waiting
-    let message = "Waiting for game to start...";
-    if (prompt) {
-      message = `Waiting for ${players[prompt.playerId]?.name} to decide...`;
-    } else if (playerOrder[currentPlayerIndex]) {
-      message = `Waiting for ${players[playerOrder[currentPlayerIndex]]?.name}'s turn...`;
-    }
-
-    return (
-      <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '18px', fontStyle: 'italic', padding: '20px' }}>
-        {message}
-      </div>
-    );
+    return null;
   };
 
   const [selectedCard, setSelectedCard] = React.useState<string | null>(null);
@@ -389,7 +377,7 @@ export const KotBoard: React.FC = () => {
 
             <div style={{ display: 'flex', gap: '15px', marginTop: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
               {dice.map((d) => {
-                const isDiceKept = d.kept || (isMyTurn && rollCount > 0 && keptDiceIds.includes(d.id));
+                const isDiceKept = keptDiceIds.includes(d.id);
                 return (
                   <div 
                     key={isDiceKept ? d.id : `dice-${d.id}-${rollCount}`}

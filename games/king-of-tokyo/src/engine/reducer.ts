@@ -303,14 +303,25 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
       nextIndex = (nextIndex + 1) % st.playerOrder.length;
     } while (st.players[st.playerOrder[nextIndex]].health <= 0);
 
+    let nextPlayerId = st.playerOrder[nextIndex];
+    let nextPlayer = st.players[nextPlayerId];
+    let newPlayers = { ...st.players };
+    let newLogs = [...st.logs, `---`, `${nextPlayer.name}'s turn!`];
+
+    if (nextPlayer.location === 'TokyoCity' && nextPlayer.health > 0) {
+      newPlayers[nextPlayerId] = { ...nextPlayer, vp: nextPlayer.vp + 2 };
+      newLogs.push(`${nextPlayer.name} starts turn in Tokyo! Gained 2 ⭐`);
+    }
+
     return {
       ...st,
+      players: newPlayers,
       currentPlayerIndex: nextIndex,
       rollCount: 0,
       turnContext: {},
       prompt: undefined,
       dice: st.dice.map(d => ({ ...d, kept: false })),
-      logs: [...st.logs, `---`, `${st.players[st.playerOrder[nextIndex]].name}'s turn!`]
+      logs: newLogs
     };
   }
 
@@ -373,17 +384,6 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
         if (state.rollCount >= 3) return state;
 
         let finalState = { ...state };
-
-        if (state.rollCount === 0) {
-          const p = finalState.players[action.payload.playerId];
-          if (p.location === 'TokyoCity' && p.health > 0) {
-            finalState.players = {
-              ...finalState.players,
-              [p.id]: { ...p, vp: p.vp + 2 }
-            };
-            finalState.logs = [...finalState.logs, `${p.name} starts turn in Tokyo! Gained 2 ⭐`];
-          }
-        }
 
         const keptDiceIds = action.payload.keptDiceIds || [];
         const newDice = finalState.dice.map(d => {
