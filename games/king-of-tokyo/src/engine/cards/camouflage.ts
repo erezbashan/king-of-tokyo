@@ -31,16 +31,9 @@ export const Camouflage: KotCard = {
         
         const logMsg = `🛡️ ${player.name} activated Camouflage! Rolled ${diceCount} dice: ${rolledFaces.join(' ')}. Blocked ${heartsRolled} damage!`;
         
-        // Push an ADD_LOG action so it appears sequentially and triggers card highlight animations individually
-        const queueLength = state.actionQueue ? state.actionQueue.length : 0;
-        const delay = 1000 + (queueLength * 1500); // Sequence the delays if multiple players trigger camouflage simultaneously
-        
         return {
           ...state,
-          actionQueue: [
-            ...(state.actionQueue || []),
-            { delayMs: delay, action: { type: 'ADD_LOG', payload: { log: logMsg } as any } }
-          ]
+          logs: [...state.logs, logMsg]
         };
       }
     }
