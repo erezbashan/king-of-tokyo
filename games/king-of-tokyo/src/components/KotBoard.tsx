@@ -176,7 +176,8 @@ export const KotBoard: React.FC = () => {
           if (log.includes(CARD_REGISTRY[cId].name)) {
             let foundPlayerId: string | null = null;
             for (const pId of gameState.playerOrder || []) {
-              if (log.includes(gameState.players[pId]?.name)) {
+              const p = gameState.players[pId];
+              if (p && log.includes(p.name) && p.cards?.includes(cId)) {
                 foundPlayerId = pId;
                 break;
               }
