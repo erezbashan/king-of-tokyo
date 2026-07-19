@@ -377,12 +377,12 @@ export const KotBoard: React.FC = () => {
 
             <div style={{ display: 'flex', gap: '15px', marginTop: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
               {dice.map((d) => {
-                const isDiceKept = keptDiceIds.includes(d.id);
+                const isDiceKept = rollCount > 0 && rollCount < 3 && keptDiceIds.includes(d.id);
                 return (
                   <div 
-                    key={isDiceKept ? d.id : `dice-${d.id}-${rollCount}`}
+                    key={d.id}
                     onClick={() => toggleKeep(d.id)}
-                    className={!isDiceKept && rollCount > 0 ? 'dice-rolling' : ''}
+                    className={rollCount > 0 ? 'dice-rolling' : ''}
                     style={{
                       width: '80px',
                       height: '80px',

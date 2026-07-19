@@ -391,7 +391,7 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
             return { ...d, kept: true };
           }
           const randomFace = DICE_FACES[Math.floor(Math.random() * DICE_FACES.length)];
-          return { ...d, value: randomFace, kept: false };
+          return { ...d, id: Math.random().toString(36).substring(7), value: randomFace, kept: false };
         });
 
         finalState = {

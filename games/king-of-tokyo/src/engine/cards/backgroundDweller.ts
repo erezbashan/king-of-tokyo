@@ -41,7 +41,7 @@ export const BackgroundDweller: KotCard = {
         if (threeIndex >= 0) {
           const DICE_FACES = ['1', '2', '3', 'Energy', 'Heart', 'Smash'];
           const randomFace = DICE_FACES[Math.floor(Math.random() * DICE_FACES.length)];
-          newDice[threeIndex] = { ...newDice[threeIndex], id: Math.random().toString(36).substring(7), value: randomFace as any };
+          newDice[threeIndex] = { ...newDice[threeIndex], id: Math.random().toString(36).substring(7), value: randomFace as any, kept: false };
         }
         let newState = {
           ...state,
