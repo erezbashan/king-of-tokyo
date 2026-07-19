@@ -9,7 +9,7 @@ export const Burrowing: KotCard = {
   onEvent: (event, payload, state) => {
     if (event === 'BEFORE_RESOLVE_ATTACKS') {
       const player = state.players[payload.playerId];
-      if (payload.cardOwnerId === payload.playerId && player.location === 'TokyoCity' && payload.smashCount) {
+      if (payload.cardOwnerId === payload.playerId && player.location === 'Outside' && payload.smashCount) {
         payload.smashCount.smashCount += 1;
         if (payload.smashCount.smashCount > 1) { // They were already attacking
           return {
