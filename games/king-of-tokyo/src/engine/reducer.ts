@@ -83,7 +83,15 @@ export const initialKotState: KotState = {
   history: []
 };
 
-const DICE_FACES: DiceFace[] = ['1', '2', '3', 'Energy', 'Heart', 'Smash'];
+export const DICE_FACES: DiceFace[] = ['1', '2', '3', 'Energy', 'Heart', 'Smash'];
+
+export function getPlayerMaxHealth(state: KotState, playerId: string): number {
+  const base = state.settings?.maxHealth || 10;
+  const player = state.players[playerId];
+  if (!player) return base;
+  const evenBiggerCount = player.cards.filter(c => c === 'even_bigger').length;
+  return base + evenBiggerCount * 2;
+}
 
 import { CARD_REGISTRY } from './cards/registry';
 import type { CardEvent, CardEventPayload } from './cards/types';
@@ -136,10 +144,10 @@ export function dispatchEvent(state: KotState, event: CardEvent, payload: CardEv
 
 function initDeck(state: KotState): { deck: string[], market: string[] } {
   let deck: string[] = [];
-  const copies = state.settings?.cardsPerType || 1;
   const activeCards = state.settings?.activeCards || ['acid_attack', 'alien_metabolism', 'alpha_monster'];
   
   for (const cardId of activeCards) {
+    const copies = CARD_REGISTRY[cardId]?.copies ?? state.settings?.cardsPerType ?? 1;
     for (let i = 0; i < copies; i++) {
       deck.push(cardId);
     }
@@ -385,9 +393,21 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
         if (state.rollCount >= 3) return state;
 
         let finalState = { ...state };
+        const player = finalState.players[action.payload.playerId];
+        const extraHeadCount = player.cards.filter(c => c === 'extra_head').length;
+        const totalDice = 6 + extraHeadCount;
+
+        let currentDice = [...finalState.dice];
+        if (currentDice.length < totalDice) {
+          while (currentDice.length < totalDice) {
+            currentDice.push({ id: Math.random().toString(36).substring(7), value: '1', kept: false });
+          }
+        } else if (currentDice.length > totalDice) {
+          currentDice = currentDice.slice(0, totalDice);
+        }
 
         const keptDiceIds = action.payload.keptDiceIds || [];
-        const newDice = finalState.dice.map(d => {
+        const newDice = currentDice.map(d => {
           if (finalState.rollCount > 0 && keptDiceIds.includes(d.id)) {
             return { ...d, kept: true };
           }
@@ -453,14 +473,16 @@ export function kingOfTokyoReducer(state: KotState, action: KotAction): KotState
           newLogs.push(`${player.name} gained ${outcomeMap['Energy']} ⚡`);
         }
 
-        // Healing (only if Outside Tokyo)
-        if (outcomeMap['Heart'] && player.location === 'Outside') {
-          const maxHealth = finalState.settings?.maxHealth || 10;
-          const actualHeal = Math.min(maxHealth - player.health, outcomeMap['Heart']);
-          if (actualHeal > 0) {
-            newHealth += actualHeal;
-            newStats.healthHealed += actualHeal;
-            newLogs.push(`${player.name} healed ${actualHeal} ❤️`);
+        // Heal
+        if (outcomeMap['Heart']) {
+          if (finalState.players[action.payload.playerId].location === 'Outside') {
+            const maxHealth = getPlayerMaxHealth(finalState, player.id);
+            const actualHeal = Math.min(maxHealth - player.health, outcomeMap['Heart']);
+            if (actualHeal > 0) {
+              newHealth += actualHeal;
+              newStats.healthHealed += actualHeal;
+              newLogs.push(`${player.name} healed ${actualHeal} ❤️`);
+            }
           }
         }
 

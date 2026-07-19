@@ -15,6 +15,10 @@ import { DropFromHighAltitude } from './dropFromHighAltitude';
 import { EaterOfTheDead } from './eaterOfTheDead';
 import { Energize } from './energize';
 import { EnergyHoarder } from './energyHoarder';
+import { EvacuationOrders } from './evacuationOrders';
+import { EvenBigger } from './evenBigger';
+import { ExtraHead } from './extraHead';
+import { FireBlast } from './fireBlast';
 
 export const CARD_REGISTRY: Record<string, KotCard> = {
   [AcidAttack.id]: AcidAttack,
@@ -33,6 +37,10 @@ export const CARD_REGISTRY: Record<string, KotCard> = {
   [EaterOfTheDead.id]: EaterOfTheDead,
   [Energize.id]: Energize,
   [EnergyHoarder.id]: EnergyHoarder,
+  [EvacuationOrders.id]: EvacuationOrders,
+  [EvenBigger.id]: EvenBigger,
+  [ExtraHead.id]: ExtraHead,
+  [FireBlast.id]: FireBlast,
 };
 
 export const ALL_CARD_IDS = Object.keys(CARD_REGISTRY).sort((a, b) => 

@@ -1,5 +1,6 @@
 import React from 'react';
 import type { KotState, KotAction } from '../engine/reducer';
+import { getPlayerMaxHealth } from '../engine/reducer';
 import { GameLayout, useGameContext } from '@erez/boardgame-core';
 import { KotStats } from './KotStats';
 
@@ -63,7 +64,7 @@ const AnimatedCounter = ({ value, icon, color, suffix, width }: { value: number,
 import { CARD_REGISTRY, ALL_CARD_IDS } from '../engine/cards/registry';
 import { dispatchEvent } from '../engine/reducer';
 
-const renderSettings = (settings: any, dispatch: any, status: string) => {
+const renderSettings = (settings: any, dispatch: any, status: string, setSelectedCard: any) => {
   const currentSettings = {
     maxHealth: settings?.maxHealth || 10,
     maxVp: settings?.maxVp || 20,
@@ -143,7 +144,12 @@ const renderSettings = (settings: any, dispatch: any, status: string) => {
                     }}
                     style={{ marginRight: '8px' }}
                   />
-                  {CARD_REGISTRY[id].name} <span style={{ color: 'gray', fontSize: '12px' }}>({CARD_REGISTRY[id].cost}⚡)</span>
+                  <span 
+                    style={{ cursor: 'pointer', textDecoration: 'underline' }}
+                    onClick={(e) => { e.preventDefault(); setSelectedCard(id); }}
+                  >
+                    {CARD_REGISTRY[id].name}
+                  </span> <span style={{ color: 'gray', fontSize: '12px' }}>({CARD_REGISTRY[id].cost}⚡)</span>
                 </label>
               </div>
             );
@@ -445,7 +451,7 @@ export const KotBoard: React.FC = () => {
           filter: isDead ? 'grayscale(100%)' : 'none',
           opacity: isDead ? 0.5 : 1
         }}>
-          <AnimatedCounter value={p.health} icon="❤️" color="#ef4444" suffix={`/${settings?.maxHealth || 10}`} width="70px" />
+          <AnimatedCounter value={p.health} icon="❤️" color="#ef4444" suffix={`/${getPlayerMaxHealth(gameState, p.id)}`} width="70px" />
           <AnimatedCounter value={p.vp} icon="⭐" color="#eab308" width="40px" />
           <AnimatedCounter value={p.energy} icon={<LightningIcon />} color="#06b6d4" width="40px" />
           {p.location === 'TokyoCity' && !isDead && (
@@ -530,7 +536,7 @@ export const KotBoard: React.FC = () => {
       renderGameSpecificPlayerDetails={renderPlayerDetails}
       renderGameSpecificStats={() => <KotStats gameState={gameState} />}
       renderLogMessage={renderLogMessage}
-      settings={renderSettings(settings, dispatch, status)}
+      settings={renderSettings(settings, dispatch, status, setSelectedCard)}
     >
       {renderGraphics()}
     </GameLayout>
