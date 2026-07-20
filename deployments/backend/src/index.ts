@@ -108,8 +108,8 @@ export const onGameUpdated = onDocumentUpdated("games/{gameId}", async (event) =
     const actionToRun = curState.actionQueue[0].action;
     curState.actionQueue = curState.actionQueue.slice(1);
 
-    console.log("SCHEDULED ACTION:", JSON.stringify(actionToRun, null, 2));
-    console.log("PENDING ACTIONS BEFORE:", JSON.stringify(curState.pendingActions, null, 2));
+    console.log("SCHEDULED ACTION:", actionToRun.type);
+    console.log("PENDING ACTIONS BEFORE:", curState.pendingActions.map(a => a.type).join(', '));
 
     let newState;
     if (data.gameType === 'flips') {
@@ -120,7 +120,7 @@ export const onGameUpdated = onDocumentUpdated("games/{gameId}", async (event) =
       return; // Add other game reducers here later
     }
 
-    console.log("PENDING ACTIONS AFTER:", JSON.stringify(newState?.pendingActions, null, 2));
+    console.log("PENDING ACTIONS AFTER:", newState?.pendingActions.map(a => a.type).join(', '));
     transaction.update(gameRef, { state: newState });
   });
 });
