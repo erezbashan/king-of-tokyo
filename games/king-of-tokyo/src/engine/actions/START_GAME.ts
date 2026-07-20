@@ -1,7 +1,21 @@
 import { KotState, PendingAction } from '../types';
 
 export function handleStartGame(st: KotState, action: PendingAction, pId: string) {
-  const newDeck = [...st.deck];
+  const newDeck: string[] = [];
+  const copies = st.settings.cardsPerType || 1;
+  
+  st.settings.activeCards.forEach(cardId => {
+    for (let i = 0; i < copies; i++) {
+      newDeck.push(cardId);
+    }
+  });
+
+  // Shuffle the deck
+  for (let i = newDeck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]];
+  }
+
   const newMarket = newDeck.splice(0, 3);
   st.deck = newDeck;
   st.market = newMarket;

@@ -1,5 +1,6 @@
 import type { BaseGameState, BaseAction, BasePlayer } from '@erez/boardgame-core';
 import { baseInitialState } from '@erez/boardgame-core';
+import { CARD_REGISTRY } from './cards/registry';
 
 export type DiceFace = '1' | '2' | '3' | 'Energy' | 'Heart' | 'Smash';
 
@@ -58,7 +59,7 @@ export const initialKotState: KotState = {
     maxVp: 20,
     cardsPerType: 1,
     startingEnergy: 0,
-    activeCards: []
+    activeCards: Object.keys(CARD_REGISTRY)
   },
   deck: [],
   market: [],
