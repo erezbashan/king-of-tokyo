@@ -26,17 +26,6 @@ function handleNextAction(state: KotState): KotState {
   if (st.pendingActions.length === 0) return st;
   let topAction = st.pendingActions[0];
 
-  if (topAction.type === 'PLAY_BOT') {
-    st.pendingActions.shift();
-    if (st.pendingActions.length > 0) {
-       const botResponse = getBotAction(st, st.playerOrder[st.currentPlayerIndex]);
-       if (botResponse) {
-          st.pendingActions.unshift(botResponse);
-       }
-    }
-    return st;
-  }
-
   if (topAction.type.startsWith('ASK')) {
      const currentPlayerId = st.playerOrder[st.currentPlayerIndex];
      const isBot = st.players[currentPlayerId]?.isBot;
@@ -89,6 +78,16 @@ export function kingOfTokyoReducer(state: KotState = initialKotState, action: Ko
     st.pendingActions.push({ type: 'START_GAME' });
     st = handleNextAction(st);
     return st;
+  }
+
+  if (action.type === 'PLAY_BOT') {
+    const pId = st.playerOrder[st.currentPlayerIndex];
+    if (st.pendingActions.length > 0) {
+       const botResponse = getBotAction(st, pId);
+       if (botResponse) {
+          st.pendingActions.unshift({ ...botResponse, playerId: pId });
+       }
+    }
   }
 
   if (action.type.startsWith('RESPONSE_')) {
