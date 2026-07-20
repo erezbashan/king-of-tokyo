@@ -80,7 +80,9 @@ function triggerCards(state: KotState, action: PendingAction, hook: 'onPreEvent'
 }
 
 export function kingOfTokyoReducer(state: KotState = initialKotState, action: KotAction): KotState {
-  if (action.type === 'NOP') return state;
+  if (action.type === 'NOP') {
+    return handleNextAction(JSON.parse(JSON.stringify(state)));
+  }
   let st = baseReducer(state, action) as KotState;
 
   if (action.type === 'START_GAME') {
