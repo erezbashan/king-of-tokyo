@@ -94,6 +94,16 @@ export function kingOfTokyoReducer(state: KotState = initialKotState, action: Ko
   else if (action.type === 'START_GAME') {
     st.pendingActions.push({ type: 'START_GAME' });
   }
+  else if (action.type === 'UPDATE_SETTINGS') {
+    st.settings = action.payload;
+    // Also apply startingEnergy to all current players in the lobby
+    st.playerOrder.forEach(pId => {
+      if (st.players[pId]) {
+        st.players[pId].energy = st.settings.startingEnergy || 0;
+      }
+    });
+    return st; // Return immediately to avoid pushing to pendingActions
+  }
   else if (action.type === 'PLAY_BOT') {
     // this is for when we went to sleep before a bot needed to decide on something
     if (st.pendingActions.length > 0) {
