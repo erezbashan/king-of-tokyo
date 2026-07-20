@@ -149,6 +149,7 @@ const renderSettings = (settings: any, dispatch: any, status: string, setSelecte
         </div>
         <div style={{ textAlign: 'left', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px', display: 'inline-block', width: '100%' }}>
           {[...(status === 'Lobby' ? Object.keys(CARD_REGISTRY) : currentSettings.activeCards)]
+            .filter(c => CARD_REGISTRY[c])
             .sort((a, b) => CARD_REGISTRY[a].name.localeCompare(CARD_REGISTRY[b].name))
             .map((id: string) => {
             const isActive = currentSettings.activeCards.includes(id);

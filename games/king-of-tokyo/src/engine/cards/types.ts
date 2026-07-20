@@ -8,4 +8,5 @@ export interface CardImplementation {
   description: string;
   onPreEvent?: (state: KotState, action: PendingAction, pId: string) => KotState;
   onPostEvent?: (state: KotState, action: PendingAction, pId: string) => KotState;
+  onBuy?: (state: KotState, action: PendingAction, pId: string) => KotState;
 }

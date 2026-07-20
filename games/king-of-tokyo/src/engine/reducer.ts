@@ -62,7 +62,11 @@ function triggerCards(state: KotState, action: PendingAction, hook: 'onPreEvent'
   let st = state;
   st.playerOrder.forEach(pId => {
     if (st.players[pId] && st.players[pId].cards) {
-      st.players[pId].cards.forEach(cardId => {
+      const cardsToCheck = [...st.players[pId].cards];
+      cardsToCheck.forEach(cardId => {
+        // Ensure player still has the card (it wasn't discarded by a previous card's hook)
+        if (!st.players[pId].cards.includes(cardId)) return;
+        
         const card = CARD_REGISTRY[cardId];
         if (card && card[hook]) {
           st = card[hook]!(st, action, pId);

@@ -1,5 +1,10 @@
 import { CardImplementation } from './types';
+import { HighAltitudeBombing } from './HighAltitudeBombing';
+import { ItHasAChild } from './ItHasAChild';
+import { JetFighters } from './JetFighters';
 
 export const CARD_REGISTRY: Record<string, CardImplementation> = {
-  // Empty for now until we re-add cards
+  [HighAltitudeBombing.id]: HighAltitudeBombing,
+  [ItHasAChild.id]: ItHasAChild,
+  [JetFighters.id]: JetFighters,
 };
