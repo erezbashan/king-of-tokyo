@@ -57,12 +57,15 @@ export const dispatchAction = onCall(async (request) => {
     const gameDoc = doc.data()!;
     let newState;
 
+    const uid = request.auth?.uid;
+    const actionWithPlayer = uid ? { ...action, playerId: uid } : action;
+
     if (gameType === 'flips') {
       if (!gameDoc.state) gameDoc.state = initialFlipsState;
-      newState = flipsReducer(gameDoc.state, action);
+      newState = flipsReducer(gameDoc.state, actionWithPlayer);
     } else if (gameType === 'king-of-tokyo') {
       if (!gameDoc.state) gameDoc.state = initialKotState;
-      newState = kingOfTokyoReducer(gameDoc.state, action as any);
+      newState = kingOfTokyoReducer(gameDoc.state, actionWithPlayer as any);
     } else {
       throw new HttpsError('invalid-argument', 'Unsupported game type');
     }

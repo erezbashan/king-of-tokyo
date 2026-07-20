@@ -248,17 +248,17 @@ export const KotBoard: React.FC = () => {
   const maxRolls = 3;
 
   const handleRoll = () => {
-    if (!isMyTurn || status !== 'Playing' || rollCount >= maxRolls || prompt) return;
-    dispatch({ type: 'ROLL_DICE', payload: { playerId: myPlayerId, keptDiceIds } });
+    if (!isMyTurn || status !== 'Playing' || rollCount >= maxRolls || topAction?.type !== 'ASK_ROLL') return;
+    dispatch({ type: 'RESPONSE_ROLL', payload: { roll: true, keptDiceIds } });
   };
 
   const handleResolve = () => {
-    if (!isMyTurn || status !== 'Playing' || prompt || rollCount === 0) return;
-    dispatch({ type: 'RESOLVE_DICE', payload: { playerId: myPlayerId } });
+    if (!isMyTurn || status !== 'Playing' || topAction?.type !== 'ASK_ROLL' || rollCount === 0) return;
+    dispatch({ type: 'RESPONSE_ROLL', payload: { roll: false } });
   };
 
   const toggleKeep = (diceId: string) => {
-    if (!isMyTurn || status !== 'Playing' || rollCount === 0 || rollCount >= maxRolls || prompt) return;
+    if (!isMyTurn || status !== 'Playing' || rollCount === 0 || rollCount >= maxRolls || topAction?.type !== 'ASK_ROLL') return;
     setKeptDiceIds(prev => prev.includes(diceId) ? prev.filter(id => id !== diceId) : [...prev, diceId]);
   };
 
@@ -277,8 +277,8 @@ export const KotBoard: React.FC = () => {
   const renderPromptsAndControls = () => {
     if (status !== 'Playing') return null;
 
-    // 1. If there's an active prompt for ME
-    if (prompt && prompt.playerId === myPlayerId) {
+    // 1. If there's an active prompt for ME (except ASK_ROLL, which uses native controls)
+    if (prompt && prompt.playerId === myPlayerId && topAction?.type !== 'ASK_ROLL') {
       return (
         <div style={{ background: 'rgba(239, 68, 68, 0.2)', padding: '20px', borderRadius: '12px', border: '1px solid #ef4444', display: 'flex', flexDirection: 'column' }}>
           <h3 style={{ margin: '0 0 15px 0' }}>{prompt.text}</h3>
@@ -293,8 +293,8 @@ export const KotBoard: React.FC = () => {
       );
     }
 
-    // 2. If it's MY turn and NO prompt
-    if (isMyTurn && !prompt) {
+    // 2. If it's MY turn and NO prompt (or if it's ASK_ROLL)
+    if (isMyTurn && (!prompt || topAction?.type === 'ASK_ROLL')) {
       return (
         <div style={{ height: '130px', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-end' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center', justifyContent: 'flex-start' }}>
