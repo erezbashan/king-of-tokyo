@@ -1,4 +1,4 @@
-import type { KotAction, KotState } from '../engine/reducer';
+import type { KotAction, KotState } from '../engine/types';
 
 export function getBotAction(state: KotState, playerId: string): KotAction | null {
   const player = state.players[playerId];
@@ -8,8 +8,9 @@ export function getBotAction(state: KotState, playerId: string): KotAction | nul
   if (topAction?.type.startsWith('ASK') && topAction.payload?.prompt?.playerId === playerId) {
     const prompt = topAction.payload.prompt;
     if (prompt.options && prompt.options.length > 0) {
-      // Just pick the first option or a 'Stay' if available
-      const opt = prompt.options.find((o: any) => o.label === 'Stay') || prompt.options[0];
+      // Pick a random option to return its exact action (RESPONSE_ROLL, RESPONSE_MARKET, etc)
+      const randomIdx = Math.floor(Math.random() * prompt.options.length);
+      const opt = prompt.options[randomIdx];
       return opt.action;
     }
   }

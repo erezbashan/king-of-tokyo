@@ -1,4 +1,4 @@
-import { KotState, PendingAction } from '../reducer';
+import { KotState, PendingAction } from '../types';
 
 export interface CardImplementation {
   id: string;
@@ -6,6 +6,6 @@ export interface CardImplementation {
   cost: number;
   type: 'Keep' | 'Discard';
   description: string;
-  onPreEvent?: (state: KotState, action: PendingAction) => KotState;
-  onPostEvent?: (state: KotState, action: PendingAction) => KotState;
+  onPreEvent?: (state: KotState, action: PendingAction, pId: string) => KotState;
+  onPostEvent?: (state: KotState, action: PendingAction, pId: string) => KotState;
 }

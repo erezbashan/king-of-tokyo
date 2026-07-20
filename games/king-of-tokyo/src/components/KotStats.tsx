@@ -1,5 +1,6 @@
 import React from 'react';
-import type { KotState } from '../engine/reducer';
+import type { KotState } from '../engine/types';
+import { getPlayerMaxHealth } from '../engine/utils';
 import { LineChartWidget, TimelineBarWidget, LineChartData, LineConfig, TimelineSegment, PLAYER_COLORS } from '@erez/boardgame-core';
 
 interface KotStatsProps {

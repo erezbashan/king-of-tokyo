@@ -1,6 +1,6 @@
 import React from 'react';
-import type { KotState, KotAction } from '../engine/reducer';
-import { getPlayerMaxHealth } from '../engine/reducer';
+import type { KotState, KotAction } from '../engine/types';
+import { getPlayerMaxHealth } from '../engine/utils';
 import { GameLayout, useGameContext } from '@erez/boardgame-core';
 import { KotStats } from './KotStats';
 
