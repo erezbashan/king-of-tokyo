@@ -1,0 +1,11 @@
+import { KotState, PendingAction } from '../types';
+
+export function handleResponseMarket(st: KotState, action: PendingAction, pId: string) {
+  if (action.payload.action === 'SWEEP') {
+    st.pendingActions.unshift({ type: 'SWEEP' });
+    st.pendingActions.unshift({ type: 'BUY_OR_SWEEP' }); // Go back to buy options
+  } else if (action.payload.action === 'BUY') {
+    st.pendingActions.unshift({ type: 'BUY', payload: { cardId: action.payload.cardId, marketIndex: action.payload.marketIndex } });
+    st.pendingActions.unshift({ type: 'BUY_OR_SWEEP' });
+  }
+}

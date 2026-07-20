@@ -1,8 +1,25 @@
 import { KotState, PendingAction } from '../types';
-import { handleStartGame, handleStartTurn, handleEndTurn, handleVP, handleEnergy, handleHealth } from './baseActions';
-import { handleSetupDice, handleResponseRoll, handleResolveRolls } from './diceActions';
-import { handleTakeDamage, handleDead, handleAttack, handleResponseYield, handleEnterTokyo } from './combatActions';
-import { handleGoToMarket, handleSetupCardPrices, handleBuyOrSweep, handleResponseMarket, handleSweep, handleBuy } from './marketActions';
+
+import { handleStartGame } from './START_GAME';
+import { handleStartTurn } from './START_TURN';
+import { handleEndTurn } from './END_TURN';
+import { handleVP } from './VP';
+import { handleEnergy } from './ENERGY';
+import { handleHealth } from './HEALTH';
+import { handleSetupDice } from './SETUP_DICE';
+import { handleResponseRoll } from './RESPONSE_ROLL';
+import { handleResolveRolls } from './RESOLVE_ROLLS';
+import { handleTakeDamage } from './TAKE_DAMAGE';
+import { handleDead } from './DEAD';
+import { handleAttack } from './ATTACK';
+import { handleResponseYield } from './RESPONSE_YIELD';
+import { handleEnterTokyo } from './ENTER_TOKYO';
+import { handleGoToMarket } from './GO_TO_MARKET';
+import { handleSetupCardPrices } from './SETUP_CARD_PRICES';
+import { handleBuyOrSweep } from './BUY_OR_SWEEP';
+import { handleResponseMarket } from './RESPONSE_MARKET';
+import { handleSweep } from './SWEEP';
+import { handleBuy } from './BUY';
 
 export type ActionHandler = (st: KotState, action: PendingAction, pId: string) => void;
 
