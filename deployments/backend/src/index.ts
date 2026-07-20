@@ -60,20 +60,17 @@ export const dispatchAction = onCall(async (request) => {
     const uid = request.auth?.uid;
     const actionWithPlayer = uid ? { ...action, playerId: uid } : action;
 
-    console.log(`[${gameId}] INCOMING ACTION:`, actionWithPlayer.type);
-    console.log(`[${gameId}] PENDING ACTIONS BEFORE:`, gameDoc.state?.pendingActions?.map((a: any) => a.type).join(', '));
-
     if (gameType === 'flips') {
       if (!gameDoc.state) gameDoc.state = initialFlipsState;
       newState = flipsReducer(gameDoc.state, actionWithPlayer);
     } else if (gameType === 'king-of-tokyo') {
       if (!gameDoc.state) gameDoc.state = initialKotState;
-      newState = kingOfTokyoReducer(gameDoc.state, actionWithPlayer as any);
+      // Pass gameId into the action so the reducer can log it
+      const actionWithGameId = { ...actionWithPlayer, gameId };
+      newState = kingOfTokyoReducer(gameDoc.state, actionWithGameId as any);
     } else {
       throw new HttpsError('invalid-argument', 'Unsupported game type');
     }
-
-    console.log(`[${gameId}] PENDING ACTIONS AFTER:`, newState?.pendingActions?.map((a: any) => a.type).join(', '));
 
     transaction.update(gameRef, { state: newState });
   });
@@ -113,19 +110,16 @@ export const onGameUpdated = onDocumentUpdated("games/{gameId}", async (event) =
     const actionToRun = curState.actionQueue[0].action;
     curState.actionQueue = curState.actionQueue.slice(1);
 
-    console.log(`[${gameId}] SCHEDULED ACTION:`, actionToRun.type);
-    console.log(`[${gameId}] PENDING ACTIONS BEFORE:`, curState.pendingActions.map((a: any) => a.type).join(', '));
-
     let newState;
     if (data.gameType === 'flips') {
       newState = flipsReducer(curState, actionToRun);
     } else if (data.gameType === 'king-of-tokyo') {
-      newState = kingOfTokyoReducer(curState, actionToRun);
+      const actionWithGameId = { ...actionToRun, gameId };
+      newState = kingOfTokyoReducer(curState, actionWithGameId);
     } else {
       return; // Add other game reducers here later
     }
 
-    console.log(`[${gameId}] PENDING ACTIONS AFTER:`, newState?.pendingActions.map((a: any) => a.type).join(', '));
     transaction.update(gameRef, { state: newState });
   });
 });

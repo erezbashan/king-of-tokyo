@@ -248,7 +248,7 @@ export const KotBoard: React.FC = () => {
   const maxRolls = 3;
 
   const handleRoll = () => {
-    if (!isMyTurn || status !== 'Playing' || rollCount >= maxRolls || topAction?.type !== 'ASK_ROLL') return;
+    if (!isMyTurn || status !== 'Playing' || rollCount === 0 || topAction?.type !== 'ASK_ROLL') return;
     dispatch({ type: 'RESPONSE_ROLL', payload: { roll: true, keptDiceIds } });
   };
 

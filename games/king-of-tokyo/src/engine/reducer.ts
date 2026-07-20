@@ -68,11 +68,12 @@ function triggerCards(state: KotState, action: PendingAction, hook: 'onPreEvent'
   return st;
 }
 
-export function kingOfTokyoReducer(state: KotState = initialKotState, action: KotAction): KotState {
+export function kingOfTokyoReducer(state: KotState = initialKotState, action: KotAction & { gameId?: string }): KotState {
+  const gamePrefix = action.gameId ? `[${action.gameId}] ` : '';
   if (action.type !== 'NOP') {
     state = JSON.parse(JSON.stringify(state)); // Deep clone state to prevent optimistic UI mutation leaks
-    console.log(`[KotReducer] INCOMING:`, action.type);
-    console.log(`[KotReducer] BEFORE PENDING:`, state.pendingActions?.map(a => a.type).join(', '));
+    console.log(`${gamePrefix}INCOMING:`, action.type);
+    console.log(`${gamePrefix}BEFORE PENDING:`, state.pendingActions?.map(a => a.type).join(', '));
   }
   
   if (action.type === 'NOP') {
@@ -110,7 +111,12 @@ export function kingOfTokyoReducer(state: KotState = initialKotState, action: Ko
     }
   }
 
-  return handleNextAction(st);
+
+  const finalState = handleNextAction(st);
+  if (action.type !== 'NOP') {
+    console.log(`${gamePrefix}AFTER PENDING:`, finalState.pendingActions?.map(a => a.type).join(', '));
+  }
+  return finalState;
 }
 
 export * from './types';
