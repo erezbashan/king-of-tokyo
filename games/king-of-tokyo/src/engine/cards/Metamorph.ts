@@ -37,7 +37,7 @@ export const Metamorph: CardImplementation = {
                 }
              };
           });
-          options.push({ label: 'Done', action: { type: 'RESPONSE_NOP' } });
+          options.push({ label: 'Done', action: { type: 'RESPONSE_NOP', playerId: pId } });
           
           st.pendingActions.unshift({
              type: 'ASK',
