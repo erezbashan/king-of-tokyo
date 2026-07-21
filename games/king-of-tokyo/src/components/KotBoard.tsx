@@ -78,54 +78,57 @@ const renderSettings = (settings: any, dispatch: any, status: string, setSelecte
   };
 
   return (
-    <div style={{ padding: '20px', textAlign: 'center' }}>
-      <div style={{ margin: '10px 20px' }}>
-        <label style={{ fontSize: '18px', marginRight: '10px' }}>Max/Initial Health:</label>
+    <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' }}>
+      
+      <div style={{ display: 'flex', justifyContent: 'space-between', width: '300px', alignItems: 'center' }}>
+        <label style={{ fontSize: '18px' }}>Max/Initial Health:</label>
         <input 
           type="number" 
           value={currentSettings.maxHealth} 
           onChange={e => dispatch({ type: 'UPDATE_SETTINGS', payload: { ...currentSettings, maxHealth: parseInt(e.target.value) || 10 } })}
           disabled={status !== 'Lobby'}
           className="modern-input"
-          style={{ width: '100px', display: 'inline-block' }}
+          style={{ width: '80px', display: 'inline-block' }}
         />
       </div>
-      <div style={{ margin: '10px 20px' }}>
-        <label style={{ fontSize: '18px', marginRight: '10px' }}>VPs to Win:</label>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', width: '300px', alignItems: 'center' }}>
+        <label style={{ fontSize: '18px' }}>VPs to Win:</label>
         <input 
           type="number" 
           value={currentSettings.maxVp} 
           onChange={e => dispatch({ type: 'UPDATE_SETTINGS', payload: { ...currentSettings, maxVp: parseInt(e.target.value) || 20 } })}
           disabled={status !== 'Lobby'}
           className="modern-input"
-          style={{ width: '100px', display: 'inline-block' }}
+          style={{ width: '80px', display: 'inline-block' }}
         />
       </div>
-      <div style={{ margin: '10px 20px' }}>
-        <label style={{ fontSize: '18px', marginRight: '10px' }}>Starting Energy:</label>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', width: '300px', alignItems: 'center' }}>
+        <label style={{ fontSize: '18px' }}>Starting Energy:</label>
         <input 
           type="number" 
           value={currentSettings.startingEnergy} 
           onChange={e => dispatch({ type: 'UPDATE_SETTINGS', payload: { ...currentSettings, startingEnergy: parseInt(e.target.value) || 0 } })}
           disabled={status !== 'Lobby'}
           className="modern-input"
-          style={{ width: '100px', display: 'inline-block' }}
+          style={{ width: '80px', display: 'inline-block' }}
         />
       </div>
 
-      <div style={{ margin: '20px auto', borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: '20px', maxWidth: '400px' }}>
-        <h3 style={{ margin: '0 0 10px 0' }}>Deck Configuration</h3>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
-          <label style={{ fontSize: '16px', marginRight: '10px' }}>Copies per Card:</label>
-          <input 
-            type="number" 
-            value={currentSettings.cardsPerType} 
-            onChange={e => dispatch({ type: 'UPDATE_SETTINGS', payload: { ...currentSettings, cardsPerType: parseInt(e.target.value) || 1 } })}
-            disabled={status !== 'Lobby'}
-            className="modern-input"
-            style={{ width: '60px', display: 'inline-block' }}
-          />
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', width: '300px', alignItems: 'center' }}>
+        <label style={{ fontSize: '18px' }}>Copies per Card:</label>
+        <input 
+          type="number" 
+          value={currentSettings.cardsPerType} 
+          onChange={e => dispatch({ type: 'UPDATE_SETTINGS', payload: { ...currentSettings, cardsPerType: parseInt(e.target.value) || 1 } })}
+          disabled={status !== 'Lobby'}
+          className="modern-input"
+          style={{ width: '80px', display: 'inline-block' }}
+        />
+      </div>
+
+      <div style={{ width: '300px', marginTop: '10px' }}>
         <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '10px' }}>
           <button 
             disabled={status !== 'Lobby'} 
@@ -142,7 +145,7 @@ const renderSettings = (settings: any, dispatch: any, status: string, setSelecte
             Select None
           </button>
         </div>
-        <div style={{ textAlign: 'left', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px', display: 'inline-block', width: '100%' }}>
+        <div style={{ textAlign: 'left', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px', width: '100%', boxSizing: 'border-box' }}>
           {[...(status === 'Lobby' ? Object.keys(CARD_REGISTRY) : currentSettings.activeCards)]
             .filter(c => CARD_REGISTRY[c])
             .sort((a, b) => CARD_REGISTRY[a].name.localeCompare(CARD_REGISTRY[b].name))
