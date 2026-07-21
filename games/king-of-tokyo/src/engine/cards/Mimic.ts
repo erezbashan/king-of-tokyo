@@ -29,7 +29,7 @@ export const Mimic: CardImplementation = {
                text: 'Mimic: Spend 1⚡ to change the mimicked card?',
                options: [
                   { label: 'Yes (1⚡)', action: { type: 'RESPONSE_MIMIC_PROMPT_CHANGE', playerId: pId } },
-                  { label: 'No', action: { type: 'NOP' } }
+                  { label: 'No', action: { type: 'RESPONSE_NOP' } }
                ]
             }
          }});

@@ -7,6 +7,12 @@ export function handleDiscard(st: KotState, action: PendingAction, pId: string) 
   const card = CARD_REGISTRY[cardId];
   if (st.players[pId].cards.includes(cardId)) {
      st.players[pId].cards = st.players[pId].cards.filter(id => id !== cardId);
-     addLog(st, action, `🚮 ${st.players[pId].name} discarded ${card ? card.name : cardId}`);
+     
+     let sourceText = '';
+     if (action.payload.sourceCard && CARD_REGISTRY[action.payload.sourceCard]) {
+        sourceText = ` via ${CARD_REGISTRY[action.payload.sourceCard].name}`;
+     }
+     
+     addLog(st, action, `🚮 ${st.players[pId].name} discarded ${card ? card.name : cardId}${sourceText}`);
   }
 }
