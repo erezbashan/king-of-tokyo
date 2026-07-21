@@ -16,10 +16,12 @@ export function handleBuy(st: KotState, action: PendingAction, pId: string) {
   addLog(st, action, `${st.players[pId].name} bought ${card.name} for ${card.cost} ⚡`);
   
   // Replace card in market
-  if (st.deck.length > 0) {
-     st.market[marketIndex] = st.deck.shift()!;
-  } else {
-     st.market[marketIndex] = ''; // Preserve slot, but it's empty
+  if (marketIndex >= 0) {
+    if (st.deck.length > 0) {
+       st.market[marketIndex] = st.deck.shift()!;
+    } else {
+       st.market[marketIndex] = ''; // Preserve slot, but it's empty
+    }
   }
   
   // Apply card to player

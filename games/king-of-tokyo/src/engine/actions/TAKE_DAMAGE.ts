@@ -10,6 +10,17 @@ export function handleTakeDamage(st: KotState, action: PendingAction, pId: strin
      addLog(st, action, `${st.players[targetId].name} took ${dmg} 💥`);
      if (newHealth === 0) {
         st.pendingActions.unshift({ type: 'DEAD', playerId: targetId });
+     } else if (action.payload.yield_after) {
+        st.pendingActions.unshift({ type: 'ASK', payload: {
+           prompt: {
+              playerId: targetId,
+              text: `Will you yield Tokyo?`,
+              options: [
+                 { label: 'Yield', action: { type: 'RESPONSE_YIELD', payload: { yield: true, attackerId: action.payload.attackerId } } },
+                 { label: 'Stay', action: { type: 'RESPONSE_YIELD', payload: { yield: false } } }
+              ]
+           }
+        }});
      }
   }
 }

@@ -26,6 +26,12 @@ function handleNextAction(state: KotState): KotState {
   if (st.pendingActions.length === 0) return st;
   let topAction = st.pendingActions[0];
 
+  if (topAction.type === 'MULTIPLE_ACTIONS') {
+     st.pendingActions.shift();
+     st.pendingActions = [...topAction.payload.actions, ...st.pendingActions];
+     return handleNextAction(st);
+  }
+
   if (topAction.type.startsWith('ASK')) {
      const promptPlayerId = topAction.payload?.prompt?.playerId || topAction.playerId || st.playerOrder[st.currentPlayerIndex];
      const isBot = st.players[promptPlayerId]?.isBot;

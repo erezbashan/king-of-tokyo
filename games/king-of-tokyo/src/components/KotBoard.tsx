@@ -330,73 +330,79 @@ export const KotBoard: React.FC = () => {
         {/* Left Half: Cards Market */}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', border: '2px dashed rgba(255,255,255,0.2)', borderRadius: '12px', padding: '20px', background: 'rgba(0,0,0,0.2)', overflowY: 'hidden', overflowX: 'hidden' }}>
           <div style={{ display: 'flex', gap: '15px', flexWrap: 'nowrap', justifyContent: 'center' }}>
-            {gameState.market?.map((cardId, i) => {
-              const card = CARD_REGISTRY[cardId];
-              if (!card) return null;
+            {(() => {
+              const standardMarket = (gameState.market || []).map((cardId, i) => ({ cardId, index: i, isExtra: false, source: 'market', overrideCost: undefined }));
+              const extraMarket = (gameState.turnContext?.marketExtraCards || []).map((extra: any, i: number) => ({ cardId: extra.cardId, index: i, isExtra: true, source: extra.source, overrideCost: extra.cost }));
+              const allMarketCards = [...standardMarket, ...extraMarket];
 
-              let displayCost = card.cost;
-              // BUY_CARD_EVAL is deprecated, just use default cost for now
-              if (isMyTurn && prompt?.text === 'Buy Phase') {
-                displayCost = card.cost;
-              }
-              const canAfford = (players[myPlayerId]?.energy || 0) >= displayCost;
-              const alreadyOwned = players[myPlayerId]?.cards?.includes(cardId);
-              const canBuy = isMyTurn && prompt?.text === 'Buy Phase' && canAfford && !alreadyOwned;
+              return allMarketCards.map(({ cardId, index, isExtra, source, overrideCost }, i) => {
+                const card = CARD_REGISTRY[cardId];
+                if (!card) return null;
 
-              return (
-                <div 
-                  key={`${cardId}-${i}`}
-                  style={{ background: '#1e293b', border: '1px solid #475569', borderRadius: '8px', padding: '15px', flex: 1, minWidth: '150px', maxWidth: '220px', height: '380px', display: 'flex', flexDirection: 'column', transition: 'transform 0.2s', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', boxSizing: 'border-box', animation: 'slideDown 0.4s ease-out' }}
-                  onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
-                  onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-                    <div style={{ fontSize: '16px', fontWeight: 'bold' }}>{card.name}</div>
-                    <div style={{ fontSize: '12px', color: 'gray', padding: '2px 6px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px' }}>{card.type}</div>
-                  </div>
-                  
-                  <div style={{ fontSize: '14px', flex: 1, marginBottom: '15px', color: '#cbd5e1', overflowY: 'auto' }}>{card.description}</div>
-                  
-                  {isMyTurn && prompt?.text === 'Buy Phase' && (
-                    <button 
-                      disabled={!canBuy}
-                      onClick={() => dispatch({ type: 'RESPONSE_MARKET', payload: { action: 'BUY', cardId, marketIndex: i } })}
-                      style={{ 
-                        padding: '12px 10px', width: '100%', fontSize: '16px', fontWeight: 'bold', borderRadius: '6px',
-                        background: canBuy ? '#3b82f6' : 'rgba(255,255,255,0.1)', 
-                        color: canBuy ? 'white' : 'gray', 
-                        border: canBuy ? 'none' : '1px solid gray',
-                        cursor: canBuy ? 'pointer' : 'default',
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        gap: '8px'
-                      }}
-                    >
-                      {alreadyOwned ? 'Already Owned' : (
-                        <span>
-                          Buy 
-                          {displayCost < card.cost ? (
-                            <span style={{ marginLeft: '8px' }}>
-                              <s style={{ color: 'rgba(255,255,255,0.5)' }}>{card.cost}</s> ➡️ {displayCost} ⚡
-                            </span>
-                          ) : (
-                            <span style={{ marginLeft: '8px' }}>{card.cost} ⚡</span>
-                          )}
-                        </span>
-                      )}
-                    </button>
-                  )}
-                  {(!isMyTurn || prompt?.text !== 'Buy Phase') && (
-                    <div style={{ textAlign: 'center', padding: '12px 10px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', color: 'gray', fontWeight: 'bold' }}>
-                      Cost: {card.cost} ⚡
+                let displayCost = overrideCost !== undefined ? overrideCost : card.cost;
+                // BUY_CARD_EVAL is deprecated, just use default cost for now
+                if (isMyTurn && prompt?.text === 'Buy Phase') {
+                  displayCost = overrideCost !== undefined ? overrideCost : card.cost;
+                }
+                const canAfford = (players[myPlayerId]?.energy || 0) >= displayCost;
+                const alreadyOwned = players[myPlayerId]?.cards?.includes(cardId);
+                const canBuy = isMyTurn && prompt?.text === 'Buy Phase' && canAfford && !alreadyOwned;
+
+                return (
+                  <div 
+                    key={`${cardId}-${i}`}
+                    style={{ background: '#1e293b', border: '1px solid #475569', borderRadius: '8px', padding: '15px', flex: 1, minWidth: '150px', maxWidth: '220px', height: '380px', display: 'flex', flexDirection: 'column', transition: 'transform 0.2s', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', boxSizing: 'border-box', animation: 'slideDown 0.4s ease-out' }}
+                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
+                    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                      <div style={{ fontSize: '16px', fontWeight: 'bold' }}>{card.name}</div>
+                      <div style={{ fontSize: '12px', color: 'gray', padding: '2px 6px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px' }}>{card.type}</div>
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                    
+                    <div style={{ fontSize: '14px', flex: 1, marginBottom: '15px', color: '#cbd5e1', overflowY: 'auto' }}>{card.description}</div>
+                    
+                    {isMyTurn && prompt?.text === 'Buy Phase' && (
+                      <button 
+                        disabled={!canBuy}
+                        onClick={() => dispatch({ type: 'RESPONSE_MARKET', payload: { action: 'BUY', cardId, marketIndex: isExtra ? -1 : index, source } })}
+                        style={{ 
+                          padding: '12px 10px', width: '100%', fontSize: '16px', fontWeight: 'bold', borderRadius: '6px',
+                          background: canBuy ? '#3b82f6' : 'rgba(255,255,255,0.1)', 
+                          color: canBuy ? 'white' : 'gray', 
+                          border: canBuy ? 'none' : '1px solid gray',
+                          cursor: canBuy ? 'pointer' : 'default',
+                          display: 'flex',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}
+                      >
+                        {alreadyOwned ? 'Already Owned' : (
+                          <span>
+                            {source === 'deck' ? 'Buy from Deck' : 'Buy'} 
+                            {displayCost < card.cost ? (
+                              <span style={{ marginLeft: '8px' }}>
+                                <s style={{ color: 'rgba(255,255,255,0.5)' }}>{card.cost}</s> ➡️ {displayCost} ⚡
+                              </span>
+                            ) : (
+                              <span style={{ marginLeft: '8px' }}>{displayCost} ⚡</span>
+                            )}
+                          </span>
+                        )}
+                      </button>
+                    )}
+                    {(!isMyTurn || prompt?.text !== 'Buy Phase') && (
+                      <div style={{ textAlign: 'center', padding: '12px 10px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', color: 'gray', fontWeight: 'bold' }}>
+                        Cost: {displayCost} ⚡
+                      </div>
+                    )}
+                  </div>
+                );
+              });
+            })()}
           </div>
-          {(!gameState.market || gameState.market.length === 0) && (
+          {(!gameState.market || gameState.market.length === 0) && (!gameState.turnContext?.marketExtraCards || gameState.turnContext.marketExtraCards.length === 0) && (
             <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '18px', fontWeight: 'bold', margin: 'auto' }}>Market Empty</div>
           )}
         </div>
