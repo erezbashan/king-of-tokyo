@@ -19,14 +19,5 @@ export const MadeInALab: CardImplementation = {
       }
     }
     return st;
-  },
-  onPostEvent: (st: KotState, action: PendingAction, pId: string) => {
-    if (action.type === 'BUY' && action.playerId === pId && action.payload.source === 'deck') {
-       // The generic BUY action handled deducting energy and adding the card.
-       // We just need to remove it from the deck.
-       st.deck.shift();
-       addLog(st, action, `🧪 ${st.players[pId].name} used Made in a Lab to buy from the deck!`);
-    }
-    return st;
   }
 };

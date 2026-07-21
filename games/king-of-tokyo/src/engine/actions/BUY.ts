@@ -22,6 +22,9 @@ export function handleBuy(st: KotState, action: PendingAction, pId: string) {
     } else {
        st.market[marketIndex] = ''; // Preserve slot, but it's empty
     }
+  } else if (action.payload.source === 'deck') {
+    // If buying directly from the deck (e.g. via Made In A Lab), just remove the top card
+    st.deck.shift();
   }
   
   // Apply card to player
