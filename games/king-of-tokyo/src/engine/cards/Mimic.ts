@@ -51,7 +51,9 @@ export const Mimic: CardImplementation = {
       
       if (allCards.length === 0) {
          addLog(st, action, `🎭 ${st.players[pId].name} has no cards to mimic!`);
-         st.turnContext[`mimic_${pId}`] = undefined;
+         if (st.players[pId].cardState) {
+            st.players[pId].cardState['mimic'] = undefined;
+         }
       } else {
          const options = allCards.map(c => ({
             label: `${CARD_REGISTRY[c.cId].name} (${st.players[c.owner].name})`,
@@ -69,7 +71,8 @@ export const Mimic: CardImplementation = {
     
     if (action.type === 'MIMIC_SET' && action.playerId === pId) {
       const targetId = action.payload.cardId;
-      st.turnContext[`mimic_${pId}`] = targetId;
+      st.players[pId].cardState = st.players[pId].cardState || {};
+      st.players[pId].cardState['mimic'] = targetId;
       addLog(st, action, `🎭 ${st.players[pId].name} is now mimicking ${CARD_REGISTRY[targetId].name}!`);
       
       // Simulate onBuy of the mimicked card if it exists
@@ -80,7 +83,7 @@ export const Mimic: CardImplementation = {
     }
     
     // Forward the onPreEvent to the mimicked card
-    const mimickedId = st.turnContext[`mimic_${pId}`];
+    const mimickedId = st.players[pId].cardState?.['mimic'];
     if (mimickedId && CARD_REGISTRY[mimickedId] && CARD_REGISTRY[mimickedId].onPreEvent) {
        CARD_REGISTRY[mimickedId].onPreEvent!(st, action, pId);
     }
@@ -89,10 +92,17 @@ export const Mimic: CardImplementation = {
   },
   onPostEvent: (st: KotState, action: PendingAction, pId: string) => {
     // Forward the onPostEvent to the mimicked card
-    const mimickedId = st.turnContext[`mimic_${pId}`];
+    const mimickedId = st.players[pId].cardState?.['mimic'];
     if (mimickedId && CARD_REGISTRY[mimickedId] && CARD_REGISTRY[mimickedId].onPostEvent) {
        CARD_REGISTRY[mimickedId].onPostEvent!(st, action, pId);
     }
     return st;
+  },
+  getLabel: (st: KotState, pId: string) => {
+    const mimickedId = st.players[pId].cardState?.['mimic'];
+    if (mimickedId && CARD_REGISTRY[mimickedId]) {
+      return CARD_REGISTRY[mimickedId].name;
+    }
+    return 'Empty';
   }
 };

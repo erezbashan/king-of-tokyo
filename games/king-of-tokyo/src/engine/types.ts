@@ -22,6 +22,7 @@ export interface KotPlayer extends BasePlayer {
     playersKilled: number;
   };
   cards: string[];
+  cardState?: Record<string, any>;
 }
 
 export interface PendingAction {

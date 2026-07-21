@@ -507,6 +507,10 @@ export const KotBoard: React.FC = () => {
                    }}
                  >
                    {CARD_REGISTRY[cId]?.name || cId}
+                   {(() => {
+                      const label = CARD_REGISTRY[cId]?.getLabel?.(gameState, p.id);
+                      return label ? ` (${label})` : '';
+                   })()}
                  </div>
                );
             })}

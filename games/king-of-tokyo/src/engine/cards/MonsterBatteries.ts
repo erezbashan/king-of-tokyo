@@ -34,7 +34,8 @@ export const MonsterBatteries: CardImplementation = {
     if (action.type === 'MONSTER_BATTERIES_SET' && action.playerId === pId) {
        const amount = action.payload.amount;
        st.players[pId].energy -= amount;
-       st.turnContext[`batteries_${pId}`] = amount * 2;
+       st.players[pId].cardState = st.players[pId].cardState || {};
+       st.players[pId].cardState['monster_batteries'] = amount * 2;
        addLog(st, action, `🔋 ${st.players[pId].name} put ${amount}⚡ on Monster Batteries, doubled to ${amount * 2}⚡!`);
        if (amount === 0) {
            st.players[pId].cards = st.players[pId].cards.filter(c => c !== 'monster_batteries');
@@ -43,12 +44,15 @@ export const MonsterBatteries: CardImplementation = {
     }
     
     if (action.type === 'START_TURN' && action.playerId === pId) {
-       let bat = st.turnContext[`batteries_${pId}`] || 0;
+       let bat = st.players[pId].cardState?.['monster_batteries'] || 0;
        if (bat > 0) {
           const take = Math.min(2, bat);
           bat -= take;
           st.players[pId].energy += take;
-          st.turnContext[`batteries_${pId}`] = bat;
+          
+          st.players[pId].cardState = st.players[pId].cardState || {};
+          st.players[pId].cardState['monster_batteries'] = bat;
+          
           addLog(st, action, `🔋 ${st.players[pId].name} took ${take}⚡ from Monster Batteries (${bat}⚡ remaining).`);
           if (bat === 0) {
              st.players[pId].cards = st.players[pId].cards.filter(c => c !== 'monster_batteries');
@@ -57,5 +61,12 @@ export const MonsterBatteries: CardImplementation = {
        }
     }
     return st;
+  },
+  getLabel: (st: KotState, pId: string) => {
+    const bat = st.players[pId].cardState?.['monster_batteries'];
+    if (bat !== undefined) {
+      return `${bat}⚡`;
+    }
+    return undefined;
   }
 };
