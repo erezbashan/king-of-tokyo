@@ -84,9 +84,11 @@ export const KotStats: React.FC<KotStatsProps> = ({ gameState }) => {
     let label = 'Empty';
     if (snapshot.tokyoOccupant) {
       const occupant = players[snapshot.tokyoOccupant];
-      const index = playerOrder.indexOf(snapshot.tokyoOccupant);
-      color = occupant.color || PLAYER_COLORS[index % PLAYER_COLORS.length];
-      label = occupant.name;
+      if (occupant) {
+        const index = playerOrder.indexOf(snapshot.tokyoOccupant);
+        color = occupant.color || PLAYER_COLORS[index % PLAYER_COLORS.length];
+        label = occupant.name;
+      }
     }
     return {
       name: snapshot.turnNum,
