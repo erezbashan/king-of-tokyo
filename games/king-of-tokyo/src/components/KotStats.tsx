@@ -12,6 +12,16 @@ export const KotStats: React.FC<KotStatsProps> = ({ gameState }) => {
 
   // 1. Prepare Table Data
   const tableData = playerOrder.map(id => players[id]);
+  tableData.sort((a, b) => {
+    const aAlive = a.health > 0;
+    const bAlive = b.health > 0;
+    if (aAlive && !bAlive) return -1;
+    if (!aAlive && bAlive) return 1;
+    if (aAlive && bAlive) {
+       return (b.vp || 0) - (a.vp || 0); 
+    }
+    return (b.stats?.turnDied || 0) - (a.stats?.turnDied || 0); 
+  });
 
   // 2. Prepare Line Chart Data
   const vpData: LineChartData[] = [];

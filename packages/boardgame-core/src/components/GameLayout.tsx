@@ -69,18 +69,6 @@ export const GameLayout: React.FC<GameLayoutProps> = ({
   const displayOrder = myIndex >= 0 ? [...playerOrder.slice(myIndex), ...playerOrder.slice(0, myIndex)] : playerOrder;
   const players = displayOrder.map((id: string) => playersMap[id]);
   
-  players.sort((aPlayer, bPlayer) => {
-    const a = aPlayer as any;
-    const b = bPlayer as any;
-    const aAlive = a.health === undefined || a.health > 0;
-    const bAlive = b.health === undefined || b.health > 0;
-    if (aAlive && !bAlive) return -1;
-    if (!aAlive && bAlive) return 1;
-    if (aAlive && bAlive) {
-       return (b.vp || 0) - (a.vp || 0); 
-    }
-    return (b.stats?.turnDied || 0) - (a.stats?.turnDied || 0); 
-  });
 
   const currentPlayerId = playerOrder[currentPlayerIndex];
 
