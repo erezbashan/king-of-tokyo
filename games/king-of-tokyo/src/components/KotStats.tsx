@@ -29,7 +29,18 @@ export const KotStats: React.FC<KotStatsProps> = ({ gameState }) => {
   
   const isDeadObj: Record<string, boolean> = {};
 
-  history.forEach((snapshot: any, turnIndex: number) => {
+  const fullHistory = [...history];
+  if (gameState.status === 'Finished') {
+    const tokyoOccupant = playerOrder.find(id => players[id].location === 'TokyoCity') || null;
+    fullHistory.push({
+      turnNum: 'Final',
+      healths: playerOrder.reduce((acc, id) => ({ ...acc, [id]: players[id].health }), {}),
+      vps: playerOrder.reduce((acc, id) => ({ ...acc, [id]: players[id].vp }), {}),
+      tokyoOccupant
+    });
+  }
+
+  fullHistory.forEach((snapshot: any, turnIndex: number) => {
     const vpEntry: LineChartData = { name: `T${snapshot.turnNum}` };
     const hpEntry: LineChartData = { name: `T${snapshot.turnNum}` };
     
@@ -79,7 +90,7 @@ export const KotStats: React.FC<KotStatsProps> = ({ gameState }) => {
   }));
 
   // 3. Prepare Timeline Bar Data
-  const tokyoData: TimelineSegment[] = history.map((snapshot: any) => {
+  const tokyoData: TimelineSegment[] = fullHistory.map((snapshot: any) => {
     let color = 'rgba(255,255,255,0.1)';
     let label = 'Empty';
     if (snapshot.tokyoOccupant) {
@@ -132,7 +143,7 @@ export const KotStats: React.FC<KotStatsProps> = ({ gameState }) => {
       </div>
 
       {/* Charts */}
-      {history.length > 0 ? (
+      {fullHistory.length > 0 ? (
         <>
           <TimelineBarWidget title="Tokyo Occupancy" data={tokyoData} height={40} />
           <LineChartWidget title="VP Progression" data={vpData} lines={lines} height={200} hideLegend hideXAxis hideTooltip yAxisWidth={40} />

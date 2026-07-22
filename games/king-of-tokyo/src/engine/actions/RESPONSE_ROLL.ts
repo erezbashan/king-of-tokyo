@@ -10,10 +10,7 @@ export function handleResponseRoll(st: KotState, action: PendingAction, pId: str
          prompt: {
            playerId: pId,
            text: 'Roll Dice?',
-           options: [
-             { label: 'Roll', action: { type: 'RESPONSE_ROLL', payload: { roll: true } } },
-             { label: 'Resolve', action: { type: 'RESPONSE_ROLL', payload: { roll: false } } }
-           ]
+           options: []
          }
       } });
     }

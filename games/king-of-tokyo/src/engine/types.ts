@@ -25,6 +25,7 @@ export interface KotPlayer extends BasePlayer {
   };
   cards: string[];
   cardState?: Record<string, any>;
+  markers?: Record<string, number>;
 }
 
 export interface PendingAction {

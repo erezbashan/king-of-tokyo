@@ -65,7 +65,33 @@ const AnimatedCounter = ({ value, icon, color, suffix, width }: { value: number,
   );
 };
 
+const AnimatedMarkerGroup = ({ count, marker }: { count: number, marker: any }) => {
+  const prevCount = React.useRef(count);
+  const [animState, setAnimState] = React.useState({ class: '', key: 0, renderCount: count });
+
+  React.useEffect(() => {
+    if (count > prevCount.current) {
+      setAnimState({ class: 'pulse-green', key: Math.random(), renderCount: count });
+    } else if (count < prevCount.current) {
+      setAnimState({ class: 'pulse-red', key: Math.random(), renderCount: prevCount.current });
+      setTimeout(() => setAnimState(s => ({ ...s, renderCount: count })), 1500);
+    }
+    prevCount.current = count;
+  }, [count]);
+
+  if (animState.renderCount === 0) return null;
+
+  return (
+    <div key={animState.key} className={animState.class} style={{ display: 'flex', transition: 'all 0.3s' }}>
+      {Array.from({ length: animState.renderCount }).map((_, i) => (
+         <span key={i} title={marker.name} style={{ textShadow: animState.class ? '0 0 10px currentColor' : 'none' }}>{marker.icon}</span>
+      ))}
+    </div>
+  );
+};
+
 import { CARD_REGISTRY } from "../engine/cards/registry";
+import { MARKER_REGISTRY } from "../engine/markers/registry";
 
 
 const renderSettings = (settings: any, dispatch: any, status: string, setSelectedCard: any) => {
@@ -170,7 +196,7 @@ const renderSettings = (settings: any, dispatch: any, status: string, setSelecte
                   )}
                   <span 
                     style={{ cursor: 'pointer', textDecoration: 'underline' }}
-                    onClick={(e) => { e.preventDefault(); setSelectedCard(id); }}
+                    onClick={(e) => { e.preventDefault(); setSelectedCard({ id }); }}
                   >
                     {CARD_REGISTRY[id].name}
                   </span> <span style={{ color: 'gray', fontSize: '12px' }}>({CARD_REGISTRY[id].cost}⚡)</span>
@@ -279,11 +305,11 @@ export const KotBoard: React.FC = () => {
     // 1. If there's an active prompt for ME (except ASK_ROLL, which uses native controls)
     if (prompt && prompt.playerId === myPlayerId && topAction?.type !== 'ASK_ROLL') {
       return (
-        <div style={{ padding: '10px', display: 'flex', flexDirection: 'column' }}>
-          <h3 style={{ margin: '0 0 10px 0' }}>{prompt.text}</h3>
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '10px' }}>
+        <div style={{ padding: '10px', display: 'flex', flexDirection: 'column', height: '100%', maxHeight: '400px' }}>
+          <h3 style={{ margin: '0 0 10px 0', flexShrink: 0 }}>{prompt.text}</h3>
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '10px', flexWrap: 'wrap', overflowY: 'auto', paddingRight: '10px', paddingBottom: '10px' }}>
             {prompt.options.map((opt: any, i: number) => (
-              <button key={i} className="btn primary" style={{ width: '160px', height: '60px', fontSize: '20px' }} onClick={() => dispatch(opt.action as KotAction)}>
+              <button key={i} className="btn primary" style={{ width: '160px', minHeight: '60px', height: 'auto', fontSize: '16px', padding: '10px' }} onClick={() => dispatch(opt.action as KotAction)}>
                 {opt.label}
               </button>
             ))}
@@ -302,6 +328,14 @@ export const KotBoard: React.FC = () => {
                  Roll ({rollCount})
               </button>
             )}
+            
+            {/* Render any dynamic options injected by the backend via ASK_ROLL */}
+            {prompt?.options?.map((opt: any, i: number) => (
+              <button key={i} className="btn primary" onClick={() => dispatch(opt.action as KotAction)} style={{ width: '160px', minHeight: '40px', height: 'auto', fontSize: '14px', padding: '5px' }}>
+                {opt.label}
+              </button>
+            ))}
+
             {rollCount < maxRolls && rollCount > 0 && (
               <button className="btn" onClick={handleResolve} style={{ width: '160px', height: '60px', fontSize: '20px', background: '#10b981', color: 'white', border: 'none' }}>
                 Done
@@ -321,7 +355,7 @@ export const KotBoard: React.FC = () => {
     return null;
   };
 
-  const [selectedCard, setSelectedCard] = React.useState<string | null>(null);
+  const [selectedCard, setSelectedCard] = React.useState<{ id: string, ownerId?: string } | null>(null);
 
   const renderGraphics = () => {
     if (status !== 'Playing' && status !== 'Finished') return null;
@@ -354,7 +388,7 @@ export const KotBoard: React.FC = () => {
                 return (
                   <div 
                     key={`${cardId}-${i}`}
-                    onClick={() => setSelectedCard(cardId)}
+                    onClick={() => setSelectedCard({ id: cardId })}
                     style={{ cursor: 'pointer', background: '#1e293b', border: '1px solid #475569', borderRadius: '8px', padding: '15px', flex: 1, minWidth: 0, maxWidth: '220px', height: '100%', maxHeight: '380px', display: 'flex', flexDirection: 'column', transition: 'transform 0.2s', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', boxSizing: 'border-box', animation: 'slideDown 0.4s ease-out', overflow: 'hidden' }}
                     onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
                     onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
@@ -490,6 +524,18 @@ export const KotBoard: React.FC = () => {
           <AnimatedCounter value={p.health} icon="❤️" color="#ef4444" suffix={`/${getPlayerMaxHealth(gameState, p.id)}`} width="70px" />
           <AnimatedCounter value={p.vp} icon="⭐" color="#eab308" width="40px" />
           <AnimatedCounter value={p.energy} icon={<LightningIcon />} color="#06b6d4" width="40px" />
+          {p.markers && Object.keys(p.markers).map(markerId => {
+             const count = p.markers![markerId];
+             if (count !== undefined && MARKER_REGISTRY[markerId]) {
+                const marker = MARKER_REGISTRY[markerId];
+                return (
+                  <div key={markerId} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => setSelectedCard({ id: markerId })}>
+                     <AnimatedMarkerGroup count={count} marker={marker} />
+                  </div>
+                );
+             }
+             return null;
+          })}
           {p.location === 'TokyoCity' && !isDead && (
             <div style={{ color: '#a855f7', fontWeight: 'bold', border: '1px solid #a855f7', padding: '2px 6px', borderRadius: '4px', fontSize: '12px', marginLeft: 'auto' }}>
               TOKYO
@@ -508,7 +554,7 @@ export const KotBoard: React.FC = () => {
                return (
                  <div 
                    key={i} 
-                   onClick={() => setSelectedCard(cId)}
+                   onClick={() => setSelectedCard({ id: cId, ownerId: p.id })}
                    style={{ 
                      fontSize: '11px', 
                      background: isHighlighted ? '#a855f7' : '#334155', 
@@ -550,7 +596,7 @@ export const KotBoard: React.FC = () => {
               newParts.push(
                 <span 
                   key={`${cId}-${idx}`} 
-                  onClick={() => setSelectedCard(cId)}
+                  onClick={() => setSelectedCard({ id: cId })}
                   style={{ color: '#60a5fa', textDecoration: 'underline', cursor: 'pointer', fontWeight: 'bold' }}
                 >
                   {card.name}
@@ -597,23 +643,29 @@ export const KotBoard: React.FC = () => {
         {renderGraphics()}
       </GameLayout>
 
-      {/* Card Details Modal moved outside GameLayout to fix lobby rendering */}
-      {selectedCard && CARD_REGISTRY[selectedCard] && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setSelectedCard(null)}>
-          <div style={{ background: '#1e293b', padding: '30px', borderRadius: '12px', border: '2px solid #3b82f6', maxWidth: '400px', width: '100%' }} onClick={e => e.stopPropagation()}>
-            <h2 style={{ margin: '0 0 10px 0' }}>{CARD_REGISTRY[selectedCard].name}</h2>
-            <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
-              <span style={{ color: '#06b6d4', fontWeight: 'bold' }}>Cost: {CARD_REGISTRY[selectedCard].cost} ⚡</span>
-              <span style={{ color: 'gray' }}>Type: {CARD_REGISTRY[selectedCard].type}</span>
-            </div>
-            <p style={{ fontSize: '16px', lineHeight: '1.5', marginBottom: '30px' }}>{CARD_REGISTRY[selectedCard].description}</p>
-            
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              <button onClick={() => setSelectedCard(null)} style={{ background: 'transparent', color: 'white', border: '1px solid gray', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer' }}>Close</button>
+      {/* Item Details Modal moved outside GameLayout to fix lobby rendering */}
+      {selectedCard && (CARD_REGISTRY[selectedCard.id] || MARKER_REGISTRY[selectedCard.id]) && (() => {
+         const item = CARD_REGISTRY[selectedCard.id] || MARKER_REGISTRY[selectedCard.id];
+         const isCard = !!CARD_REGISTRY[selectedCard.id];
+         return (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setSelectedCard(null)}>
+            <div style={{ background: '#1e293b', padding: '30px', borderRadius: '12px', border: '2px solid #3b82f6', maxWidth: '400px', width: '100%' }} onClick={e => e.stopPropagation()}>
+              <h2 style={{ margin: '0 0 10px 0' }}>{item.name} {(item as any).icon ? ` ${(item as any).icon}` : ''}</h2>
+              {isCard && (
+                <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
+                  <span style={{ color: '#06b6d4', fontWeight: 'bold' }}>Cost: {(item as any).cost} ⚡</span>
+                  <span style={{ color: 'gray' }}>Type: {(item as any).type}</span>
+                </div>
+              )}
+              <p style={{ fontSize: '16px', lineHeight: '1.5', marginBottom: '30px' }}>{item.description}</p>
+              
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button onClick={() => setSelectedCard(null)} style={{ background: 'transparent', color: 'white', border: '1px solid gray', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer' }}>Close</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+         );
+      })()}
     </>
   );
 };

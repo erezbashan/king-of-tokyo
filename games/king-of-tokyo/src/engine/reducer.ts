@@ -2,6 +2,7 @@ import { baseReducer } from '@erez/boardgame-core';
 import { KotState, KotAction, initialKotState, PendingAction } from './types';
 import { ACTION_HANDLERS } from './actions';
 import { CARD_REGISTRY } from './cards/registry';
+import { MARKER_REGISTRY } from './markers/registry';
 import { getBotAction } from '../bots/botLogic';
 
 function doAction(state: KotState, action: PendingAction): KotState {
@@ -77,6 +78,18 @@ function triggerCards(state: KotState, action: PendingAction, hook: 'onPreEvent'
         if (card && card[hook]) {
           st = card[hook]!(st, action, pId);
         }
+      });
+    }
+
+    if (st.players[pId] && st.players[pId].markers) {
+      Object.keys(st.players[pId].markers || {}).forEach(markerId => {
+         const count = st.players[pId].markers![markerId];
+         if (count > 0) {
+            const marker = MARKER_REGISTRY[markerId];
+            if (marker && marker[hook]) {
+               st = marker[hook]!(st, action, pId);
+            }
+         }
       });
     }
   });

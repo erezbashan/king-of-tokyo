@@ -18,6 +18,9 @@ export function handleTakeDamage(st: KotState, action: PendingAction, pId: strin
      }
 
      if (newHealth === 0) {
+        if (action.payload.yield_after && action.payload.attackerId) {
+           st.pendingActions.unshift({ type: 'ENTER_TOKYO', playerId: action.payload.attackerId });
+        }
         st.pendingActions.unshift({ type: 'DEAD', playerId: targetId });
      } else if (action.payload.yield_after) {
         st.pendingActions.unshift({ type: 'ASK', payload: {

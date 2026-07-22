@@ -43,8 +43,18 @@ export function getBotAction(state: KotState, playerId: string): KotAction | nul
        return { type: 'RESPONSE_MARKET', payload: { action: 'DONE' } };
     }
 
+    if (topAction.type === 'ASK_ROLL') {
+       if (state.rollCount > 0 && Math.random() < 0.7) {
+          // 70% chance to roll again if allowed. Keep random dice? Too complex for basic bot, just roll all non-scoring dice maybe?
+          // Just roll all for now, or pick random ones to keep
+          const toKeep = state.dice.filter(d => ['Heart', 'Energy', 'Smash'].includes(d.value) && Math.random() > 0.5).map(d => d.id);
+          return { type: 'RESPONSE_ROLL', payload: { roll: true, keptDiceIds: toKeep } };
+       }
+       return { type: 'RESPONSE_ROLL', payload: { roll: false } };
+    }
+
     if (prompt.options && prompt.options.length > 0) {
-      // Pick a random option to return its exact action (RESPONSE_ROLL, RESPONSE_MARKET, etc)
+      // Pick a random option to return its exact action (RESPONSE_MARKET, etc)
       const randomIdx = Math.floor(Math.random() * prompt.options.length);
       const opt = prompt.options[randomIdx];
       return opt.action;
