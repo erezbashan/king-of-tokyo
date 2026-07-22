@@ -14,6 +14,7 @@ import { NationalGuard } from './NationalGuard';
 import { NovaBreath } from './NovaBreath';
 import { NuclearPowerPlant } from './NuclearPowerPlant';
 import { Omnivore } from './Omnivore';
+import { Opportunist } from './Opportunist';
 import { PoisonQuills } from './PoisonQuills';
 import { PoisonSpit } from './PoisonSpit';
 import { Regeneration } from './Regeneration';
@@ -40,6 +41,7 @@ export const CARD_REGISTRY: Record<string, CardImplementation> = {
   [NovaBreath.id]: NovaBreath,
   [NuclearPowerPlant.id]: NuclearPowerPlant,
   [Omnivore.id]: Omnivore,
+  [Opportunist.id]: Opportunist,
   [PoisonQuills.id]: PoisonQuills,
   [PoisonSpit.id]: PoisonSpit,
   [Regeneration.id]: Regeneration,

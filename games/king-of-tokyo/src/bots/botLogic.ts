@@ -53,6 +53,14 @@ export function getBotAction(state: KotState, playerId: string): KotAction | nul
        return { type: 'RESPONSE_ROLL', payload: { roll: false } };
     }
 
+    if (topAction.type === 'ASK_OPPORTUNIST') {
+       if (Math.random() < 0.3 && prompt.options) {
+          const buyOption = prompt.options.find((o: any) => o.label.includes('Buy'));
+          if (buyOption) return buyOption.action;
+       }
+       return { type: 'RESPONSE_NOP', payload: {} };
+    }
+
     if (prompt.options && prompt.options.length > 0) {
       // Pick a random option to return its exact action (RESPONSE_MARKET, etc)
       const randomIdx = Math.floor(Math.random() * prompt.options.length);

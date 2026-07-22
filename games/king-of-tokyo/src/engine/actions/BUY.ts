@@ -9,6 +9,11 @@ export function handleBuy(st: KotState, action: PendingAction, pId: string) {
   
   if (!card) return;
 
+  if (marketIndex >= 0 && st.market[marketIndex] !== cardId) {
+     addLog(st, action, `${st.players[pId].name} tried to buy ${card.name}, but it was already taken!`);
+     return;
+  }
+
   // Deduct cost
   if (st.players[pId].energy < card.cost) return;
   st.players[pId].energy -= card.cost;
@@ -19,7 +24,9 @@ export function handleBuy(st: KotState, action: PendingAction, pId: string) {
   // Replace card in market
   if (marketIndex >= 0) {
     if (st.deck.length > 0) {
-       st.market[marketIndex] = st.deck.shift()!;
+       const newCardId = st.deck.shift()!;
+       st.market[marketIndex] = newCardId;
+       st.pendingActions.unshift({ type: 'CARD_REVEALED', playerId: pId, payload: { cardId: newCardId, marketIndex } });
     } else {
        st.market[marketIndex] = ''; // Preserve slot, but it's empty
     }
