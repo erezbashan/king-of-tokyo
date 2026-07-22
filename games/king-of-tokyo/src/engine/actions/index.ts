@@ -15,7 +15,6 @@ import { handleAttack } from './ATTACK';
 import { handleResponseYield } from './RESPONSE_YIELD';
 import { handleEnterTokyo } from './ENTER_TOKYO';
 import { handleGoToMarket } from './GO_TO_MARKET';
-import { handleSetupCardPrices } from './SETUP_CARD_PRICES';
 import { handleBuyOrSweep } from './BUY_OR_SWEEP';
 import { handleResponseMarket } from './RESPONSE_MARKET';
 import { handleSweep } from './SWEEP';
@@ -40,7 +39,6 @@ export const ACTION_HANDLERS: Record<string, ActionHandler> = {
   RESPONSE_YIELD: handleResponseYield,
   ENTER_TOKYO: handleEnterTokyo,
   GO_TO_MARKET: handleGoToMarket,
-  SETUP_CARD_PRICES: handleSetupCardPrices,
   BUY_OR_SWEEP: handleBuyOrSweep,
   RESPONSE_MARKET: handleResponseMarket,
   SWEEP: handleSweep,

@@ -67,7 +67,13 @@ function handleNextAction(state: KotState): KotState {
 
 function triggerCards(state: KotState, action: PendingAction, hook: 'onPreEvent' | 'onPostEvent'): KotState {
   let st = state;
-  st.playerOrder.forEach(pId => {
+  const startIndex = st.currentPlayerIndex || 0;
+  const orderedPlayers = [
+    ...st.playerOrder.slice(startIndex),
+    ...st.playerOrder.slice(0, startIndex)
+  ];
+
+  orderedPlayers.forEach(pId => {
     if (st.players[pId] && st.players[pId].cards) {
       const cardsToCheck = [...st.players[pId].cards];
       cardsToCheck.forEach(cardId => {

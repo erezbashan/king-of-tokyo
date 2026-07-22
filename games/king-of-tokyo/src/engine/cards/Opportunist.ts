@@ -17,27 +17,41 @@ export const Opportunist: CardImplementation = {
       const cardDef = CARD_REGISTRY[cardId];
       if (!cardDef) return st;
 
-      let cost = cardDef.cost;
-      if (owner.cards.includes('alien_metabolism')) {
-         cost = Math.max(0, cost - 1);
-      }
+      const cost = cardDef.cost;
 
       if (owner.energy >= cost && !owner.cards.includes(cardId)) {
-         st.pendingActions.unshift({
-           type: 'ASK_OPPORTUNIST',
-           playerId: pId, // The Opportunist owner gets the prompt
-           payload: {
-              prompt: {
-                 playerId: pId,
-                 text: `Opportunist: Buy ${cardDef.name}?`,
-                 options: [
-                    { label: `Buy for ${cost} ⚡`, action: { type: 'BUY', payload: { cardId, marketIndex, source: 'market' } } },
-                    { label: 'Decline', action: { type: 'RESPONSE_NOP', payload: {} } }
-                 ]
-              }
-           }
-         });
+         // Instead of generating a generic ASK right now (which applies to all Opportunists at once),
+         // we inject CHECK_OPPORTUNIST so that it executes in player order sequentially.
+         st.pendingActions.unshift({ type: 'CHECK_OPPORTUNIST', playerId: pId, payload: { cardId, marketIndex, cost } });
       }
+    }
+    return st;
+  },
+  onPreEvent: (st, action, pId) => {
+    if (action.type === 'CHECK_OPPORTUNIST' && action.playerId === pId) {
+       const cardId = action.payload.cardId;
+       const marketIndex = action.payload.marketIndex;
+       const cost = action.payload.cost;
+       const cardDef = CARD_REGISTRY[cardId];
+       
+       // Verify the card is still in the market (another Opportunist might have bought it first)
+       if (st.market[marketIndex] === cardId && st.players[pId].energy >= cost) {
+          // Mutate the CHECK_OPPORTUNIST action into a generic ASK action
+          action.type = 'ASK';
+          action.payload = {
+             prompt: {
+                playerId: pId,
+                text: `Opportunist: Buy ${cardDef.name}?`,
+                options: [
+                   { label: `Buy for ${cost} ⚡`, action: { type: 'BUY', payload: { cardId, marketIndex, source: 'market' } } },
+                   { label: 'Decline', action: { type: 'RESPONSE_NOP', payload: {} } }
+                ]
+             }
+          };
+       } else {
+          // Mutate into NOP so it does nothing
+          action.type = 'NOP';
+       }
     }
     return st;
   }

@@ -100,7 +100,7 @@ const renderSettings = (settings: any, dispatch: any, status: string, setSelecte
     maxVp: settings?.maxVp || 20,
     cardsPerType: settings?.cardsPerType || 1,
     startingEnergy: settings?.startingEnergy || 0,
-    activeCards: settings?.activeCards || ['acid_attack', 'alien_metabolism', 'alpha_monster']
+    activeCards: settings?.activeCards || []
   };
 
   return (
