@@ -75,13 +75,14 @@
 
 .game-right-pane {
   flex: 1;
+  min-width: 340px;
   background: rgba(0, 0, 0, 0.2);
   border-left: 1px solid rgba(255, 255, 255, 0.1);
   padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  overflow-y: hidden;
+  overflow-y: auto;
 }
 
 .player-card {
