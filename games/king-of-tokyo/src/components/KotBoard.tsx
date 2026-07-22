@@ -279,7 +279,7 @@ export const KotBoard: React.FC = () => {
     // 1. If there's an active prompt for ME (except ASK_ROLL, which uses native controls)
     if (prompt && prompt.playerId === myPlayerId && topAction?.type !== 'ASK_ROLL') {
       return (
-        <div style={{ background: 'rgba(239, 68, 68, 0.2)', padding: '20px', borderRadius: '12px', border: '1px solid #ef4444', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ padding: '20px', display: 'flex', flexDirection: 'column' }}>
           <h3 style={{ margin: '0 0 15px 0' }}>{prompt.text}</h3>
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '10px' }}>
             {prompt.options.map((opt: any, i: number) => (
@@ -354,7 +354,8 @@ export const KotBoard: React.FC = () => {
                 return (
                   <div 
                     key={`${cardId}-${i}`}
-                    style={{ background: '#1e293b', border: '1px solid #475569', borderRadius: '8px', padding: '15px', flex: 1, minWidth: 0, maxWidth: '220px', height: '100%', maxHeight: '380px', display: 'flex', flexDirection: 'column', transition: 'transform 0.2s', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', boxSizing: 'border-box', animation: 'slideDown 0.4s ease-out', overflow: 'hidden' }}
+                    onClick={() => setSelectedCard(cardId)}
+                    style={{ cursor: 'pointer', background: '#1e293b', border: '1px solid #475569', borderRadius: '8px', padding: '15px', flex: 1, minWidth: 0, maxWidth: '220px', height: '100%', maxHeight: '380px', display: 'flex', flexDirection: 'column', transition: 'transform 0.2s', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', boxSizing: 'border-box', animation: 'slideDown 0.4s ease-out', overflow: 'hidden' }}
                     onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
                     onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
                   >
@@ -375,7 +376,7 @@ export const KotBoard: React.FC = () => {
                     {isMyTurn && prompt?.text === 'Buy Phase' && (
                       <button 
                         disabled={!canBuy}
-                        onClick={() => dispatch({ type: 'RESPONSE_MARKET', payload: { action: 'BUY', cardId, marketIndex: isExtra ? -1 : index, source } })}
+                        onClick={(e) => { e.stopPropagation(); dispatch({ type: 'RESPONSE_MARKET', payload: { action: 'BUY', cardId, marketIndex: isExtra ? -1 : index, source } }); }}
                         style={{ 
                           padding: '12px 10px', width: '100%', fontSize: '16px', fontWeight: 'bold', borderRadius: '6px',
                           background: canBuy ? '#3b82f6' : 'rgba(255,255,255,0.1)', 
