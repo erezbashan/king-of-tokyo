@@ -116,7 +116,7 @@ export const GameLayout: React.FC<GameLayoutProps> = ({
       <div className="game-main-area">
         {/* LEFT PANE */}
         <div className="game-left-pane">
-          <div className="game-stage-area">
+          <div className="game-stage-area" style={{ overflowY: status === 'Lobby' ? 'auto' : 'hidden' }}>
             {status === 'Lobby' && settings}
             {status !== 'Lobby' && children}
           </div>
