@@ -24,7 +24,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ messages, onSendMessage 
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '10px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '5px', marginBottom: '10px' }}>
         <h4 style={{ margin: 0, fontSize: '18px' }}>Chat</h4>
-        <button onClick={() => setShowAll(true)} style={{ background: 'transparent', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '12px' }}>See All</button>
+        <button onClick={() => setShowAll(true)} style={{ background: 'transparent', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '12px' }}>View All</button>
       </div>
       
       <div style={{ flex: 1, overflow: 'hidden', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', padding: '10px', marginBottom: '10px', display: 'flex', flexDirection: 'column-reverse' }}>
