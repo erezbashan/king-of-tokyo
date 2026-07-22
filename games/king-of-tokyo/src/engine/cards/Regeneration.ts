@@ -10,7 +10,7 @@ export const Regeneration: CardImplementation = {
   onPreEvent: (st, action, pId) => {
     if (action.type === 'HEALTH' && action.playerId === pId && action.payload.amount > 0) {
       action.payload.amount += 1;
-      addLog(st, action, `${st.players[pId].name} heals 1 extra damage (Regeneration)`);
+      action.payload.reason = 'Regeneration';
     }
     return st;
   }

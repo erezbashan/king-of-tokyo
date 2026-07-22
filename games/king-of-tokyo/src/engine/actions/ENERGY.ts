@@ -13,6 +13,7 @@ export function handleEnergy(st: KotState, action: PendingAction, pId: string) {
        sourceText = ` via ${CARD_REGISTRY[action.payload.sourceCard].name}`;
     }
     
-    addLog(st, action, `${st.players[pId].name} gained ${action.payload.amount} ⚡${sourceText}`);
+    const reasonStr = action.payload.reason ? ` (${action.payload.reason})` : '';
+    addLog(st, action, `${st.players[pId].name} gained ${action.payload.amount} ⚡${reasonStr}${sourceText}`);
   }
 }

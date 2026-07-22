@@ -12,7 +12,8 @@ export function handleHealth(st: KotState, action: PendingAction, pId: string) {
     if (actual > 0 && canHeal) {
       st.players[pId] = { ...st.players[pId], health: st.players[pId].health + actual };
       st.players[pId].stats.healthHealed += actual;
-      addLog(st, action, `${st.players[pId].name} healed ${actual} ❤️`);
+      const reasonStr = action.payload.reason ? ` (${action.payload.reason})` : '';
+      addLog(st, action, `${st.players[pId].name} healed ${actual} ❤️${reasonStr}`);
     }
   }
 }

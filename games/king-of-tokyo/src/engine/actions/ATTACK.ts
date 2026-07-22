@@ -4,7 +4,8 @@ import { addLog } from '../utils';
 export function handleAttack(st: KotState, action: PendingAction, pId: string) {
   const attacker = st.players[pId];
   const damage = action.payload.damage;
-  addLog(st, action, `${attacker.name} attacks for ${damage}!`);
+  const reasonStr = action.payload.reason ? ` (${action.payload.reason})` : '';
+  addLog(st, action, `${attacker.name} attacks for ${damage}!${reasonStr}`);
 
   const actionsToPush: PendingAction[] = [];
 

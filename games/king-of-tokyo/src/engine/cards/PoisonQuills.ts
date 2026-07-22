@@ -7,13 +7,12 @@ export const PoisonQuills: CardImplementation = {
   cost: 3,
   type: 'Keep',
   description: 'When you score 2️⃣2️⃣2️⃣ also deal 2 damage.',
-  onPreEvent: (st, action, pId) => {
+  onPostEvent: (st, action, pId) => {
     if (action.type === 'RESOLVE_ROLLS' && action.playerId === pId) {
       const outcomeMap: Record<string, number> = {};
       st.dice.forEach(d => { outcomeMap[d.value] = (outcomeMap[d.value] || 0) + 1; });
       if (outcomeMap['2'] >= 3) {
-         addLog(st, action, `${st.players[pId].name} deals 2 damage from [2][2][2] (Poison Quills)`);
-         st.pendingActions.unshift({ type: 'ATTACK', payload: { damage: 2 }, playerId: pId });
+         st.pendingActions.unshift({ type: 'ATTACK', payload: { damage: 2, reason: 'Poison Quills' }, playerId: pId });
       }
     }
     return st;
