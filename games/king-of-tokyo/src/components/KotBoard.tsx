@@ -331,7 +331,7 @@ export const KotBoard: React.FC = () => {
         <style dangerouslySetInnerHTML={{ __html: styles }} />
         
         {/* Left Half: Cards Market */}
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', border: '2px dashed rgba(255,255,255,0.2)', borderRadius: '12px', padding: '20px', background: 'rgba(0,0,0,0.2)', overflow: 'hidden' }}>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '20px', overflow: 'hidden' }}>
           <div style={{ display: 'flex', gap: '15px', flexWrap: 'nowrap', justifyContent: 'center', height: '100%' }}>
             {(() => {
               const standardMarket = (gameState.market || []).map((cardId, i) => ({ cardId, index: i, isExtra: false, source: 'market', overrideCost: undefined }));
@@ -425,14 +425,14 @@ export const KotBoard: React.FC = () => {
           </div>
 
           {/* Bottom Right: Dice */}
-          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.2)', padding: '20px', borderRadius: '12px', overflow: 'hidden' }}>
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', overflow: 'hidden' }}>
             {status === 'Finished' && (
               <div style={{ padding: '15px 40px', background: gameState.winnerId === myPlayerId ? '#22c55e' : 'rgba(255,255,255,0.1)', color: 'white', borderRadius: '12px', marginBottom: '30px', textAlign: 'center', fontSize: '32px', fontWeight: 'bold' }}>
                 {gameState.winnerId === myPlayerId ? "🏆 You Won!" : `Winner: ${gameState.winnerId && players[gameState.winnerId] ? players[gameState.winnerId].name : 'Unknown'}`}
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: '15px', marginTop: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', gap: '15px', marginTop: '20px', flexWrap: 'nowrap', justifyContent: 'center', width: '100%', maxWidth: '500px' }}>
               {dice.map((d) => {
                 const isDiceKept = rollCount < maxRolls && keptDiceIds.includes(d.id);
                 return (
@@ -441,7 +441,8 @@ export const KotBoard: React.FC = () => {
                     onClick={() => toggleKeep(d.id)}
                     className={rollCount < maxRolls && !isDiceKept ? 'dice-rolling' : ''}
                     style={{
-                      flex: '1 1 auto',
+                      flex: '1 1 0',
+                      minWidth: 0,
                       maxWidth: dice.length > 6 ? '65px' : '80px',
                       height: 'auto',
                       aspectRatio: '1 / 1',
