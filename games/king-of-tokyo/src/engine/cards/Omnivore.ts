@@ -6,7 +6,7 @@ export const Omnivore: CardImplementation = {
   name: 'Omnivore',
   cost: 4,
   type: 'Keep',
-  description: 'Once each turn you can score [1][2][3] for 2[Star]. You can use these dice in other combinations.',
+  description: 'Once each turn you can score 1️⃣2️⃣3️⃣ for 2⭐. You can use these dice in other combinations.',
   onPreEvent: (st, action, pId) => {
     if (action.type === 'RESOLVE_ROLLS' && action.playerId === pId) {
       const outcomeMap: Record<string, number> = {};
