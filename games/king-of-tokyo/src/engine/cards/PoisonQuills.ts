@@ -1,0 +1,21 @@
+import { CardImplementation } from './types';
+import { addLog } from '../utils';
+
+export const PoisonQuills: CardImplementation = {
+  id: 'poison_quills',
+  name: 'Poison Quills',
+  cost: 3,
+  type: 'Keep',
+  description: 'When you score [2][2][2] also deal 2 damage.',
+  onPreEvent: (st, action, pId) => {
+    if (action.type === 'RESOLVE_ROLLS' && action.playerId === pId) {
+      const outcomeMap: Record<string, number> = {};
+      st.dice.forEach(d => { outcomeMap[d.value] = (outcomeMap[d.value] || 0) + 1; });
+      if (outcomeMap['2'] >= 3) {
+         addLog(st, action, `${st.players[pId].name} deals 2 damage from [2][2][2] (Poison Quills)`);
+         st.pendingActions.unshift({ type: 'ATTACK', payload: { damage: 2 }, playerId: pId });
+      }
+    }
+    return st;
+  }
+};

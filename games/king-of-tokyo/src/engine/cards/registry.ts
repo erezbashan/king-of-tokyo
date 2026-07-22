@@ -15,6 +15,12 @@ import { Skyscraper } from './Skyscraper';
 import { Tanks } from './Tanks';
 import { AmusementPark } from './AmusementPark';
 
+import { NovaBreath } from './NovaBreath';
+import { Omnivore } from './Omnivore';
+import { PoisonQuills } from './PoisonQuills';
+import { Regeneration } from './Regeneration';
+import { SolarPowered } from './SolarPowered';
+
 export const CARD_REGISTRY: Record<string, CardImplementation> = {
   [HighAltitudeBombing.id]: HighAltitudeBombing,
   [ItHasAChild.id]: ItHasAChild,
@@ -29,4 +35,9 @@ export const CARD_REGISTRY: Record<string, CardImplementation> = {
   [Skyscraper.id]: Skyscraper,
   [Tanks.id]: Tanks,
   [AmusementPark.id]: AmusementPark,
+  [NovaBreath.id]: NovaBreath,
+  [Omnivore.id]: Omnivore,
+  [PoisonQuills.id]: PoisonQuills,
+  [Regeneration.id]: Regeneration,
+  [SolarPowered.id]: SolarPowered,
 };
